@@ -1,28 +1,6 @@
-# macOS
-.DS_Store
-*.swp
-*~
+# .gitignore — Android-only NOOP fork
 
-# Xcode
-DerivedData/
-*.xcuserstate
-xcuserdata/
-*.moved-aside
-*.pbxuser
-*.mode1v3
-*.mode2v3
-*.perspectivev3
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-# Swift Package Manager
-.build/
-.swiftpm/
-Packages/**/.build/
-
-# Android (see android/.gitignore for more)
+# Android
 android/.gradle/
 android/build/
 android/app/build/
@@ -33,23 +11,25 @@ android/.cxx/
 android/captures/
 android/*.apk
 android/*.aab
+*.apk
 android/*.jks
 android/*.keystore
+android/keystore.properties
 
-# Python
+# Python / tooling
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 
-# Secrets / local config
+# Secrets
 .env
 .env.*
 *.pem
-*.p12
-*.mobileprovision
 
-# Editor
+# Editor / OS
+.DS_Store
 .idea/
 .vscode/
 *.iml
+*~
