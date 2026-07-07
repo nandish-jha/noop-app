@@ -448,14 +448,13 @@ object NoopPrefs {
         of(context).edit().putBoolean(KEY_CYCLE_TRACKING, enabled).apply()
     }
 
-    /** Hydration tracking (MVP): an opt-in, on-device-only fluid log with a daily goal + quick-add
-     *  buttons. OPT-IN, default OFF (manual-first ethos), the Today "Hydration" card and the detail
-     *  feature only appear once this is on. Nothing is synced; the day total lives in the local
-     *  metric-series store. */
+    /** Hydration tracking (MVP): an on-device-only fluid log with a daily goal + quick-add buttons.
+     *  Default ON so the Today Hydration card is visible out of the box. Nothing is synced; the day
+     *  total lives in the local metric-series store. */
     const val KEY_HYDRATION_TRACKING = "noop.hydrationTracking"
 
     fun hydrationTracking(context: Context): Boolean =
-        of(context).getBoolean(KEY_HYDRATION_TRACKING, false)
+        of(context).getBoolean(KEY_HYDRATION_TRACKING, true)
 
     fun setHydrationTracking(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_HYDRATION_TRACKING, enabled).apply()

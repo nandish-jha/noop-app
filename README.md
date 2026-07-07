@@ -31,6 +31,8 @@
 
 Get the latest **`NOOP-full.apk`** from **[Releases](https://github.com/nandish-jha/noop-app/releases/latest)**.
 
+See **[RELEASE_NOTES.md](RELEASE_NOTES.md)** for a full list of fork customizations in this build.
+
 | Requirement | Details |
 |---|---|
 | **Android** | 8.0+ (`minSdk 26`) |

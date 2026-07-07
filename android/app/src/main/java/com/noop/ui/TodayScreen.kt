@@ -218,7 +218,6 @@ private data class TodayLiveSnapshot(
 @Composable
 fun TodayScreen(
     viewModel: AppViewModel,
-    onSupport: () -> Unit = {},
     onQuickActions: () -> Unit = {},
     updateStore: UpdateStore? = null,
     onOpenUpdates: () -> Unit = {},
@@ -478,12 +477,19 @@ fun TodayScreen(
         }.getOrNull()
     }
 
-    // HYDRATION (opt-in, default OFF), the Today "Hydration" card + its detail are hidden unless the user
-    // turns Hydration tracking on in Settings. When on, the card reads today's logged total (ml, from the
-    // local-only HydrationStore series) against the pure HydrationGoal (sex baseline + today's Effort bump).
-    // Both are loaded off the main thread and re-read as the day's data grows; SharedPreferences isn't
-    // reactive, so the toggle is read once into local state.
-    val hydrationEnabled = remember { NoopPrefs.hydrationTracking(context) }
+    // HYDRATION — the Today "Hydration" card + detail are hidden unless hydration tracking is on.
+    // Default ON in this fork; re-read on resume so toggling in Settings takes effect immediately.
+    var hydrationEnabled by remember { mutableStateOf(NoopPrefs.hydrationTracking(context)) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                hydrationEnabled = NoopPrefs.hydrationTracking(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var hydrationTotalMl by remember { mutableStateOf(0.0) }
     // #989: `days` only changes on a data refresh, which a hydration write never causes, so the card sat
     // stale after logging a drink until an unrelated sync landed. Keying on the store's mutationSeq too
@@ -1361,12 +1367,6 @@ fun TodayScreen(
         if (selectedDayOffset == 0) {
             item { AutoWorkoutNudgeCard(viewModel = viewModel, days = days) }
         }
-        // Honest, dismissible 12-hourly donation ask, a card in the flow, never a dialog.
-        item { DonationNudgeCard() }
-        // Support, an in-content card (heart.fill in metricRose, "Donate or get in touch, totally
-        // optional.", chevron). The Support heart left the header cluster for parity with iOS, where
-        // Support is an in-flow supportRow near the donation nudge (still reachable via More → Support).
-        item { SupportRow(onSupport = onSupport) }
         // Strap battery only while the link is up AND a real reading exists, a stale % from a
         // dropped connection must not present as live (#159).
         item {
@@ -2068,54 +2068,6 @@ private fun LiquidWordmark() {
                 style = NoopType.number(16f, weight = FontWeight.Bold)
                     .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.25f), offset = Offset(0f, 1f), blurRadius = 6f)),
                 color = Color.White.copy(alpha = 0.5f),
-            )
-        }
-    }
-}
-
-/** In-content Support card (iOS supportRow): heart.fill in metricRose, the donation copy, a chevron.
- *  The whole card is the tap target. Lives near the donation nudge in the Today flow. */
-@Composable
-private fun SupportRow(onSupport: () -> Unit) {
-    // liquidPress on the whole tappable card (the SAME interactionSource drives the clickable + the press).
-    val interaction = remember { MutableInteractionSource() }
-    NoopCard(
-        modifier = Modifier
-            .liquidPress(interaction)
-            .clip(RoundedCornerShape(Metrics.cardRadius))
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onSupport,
-            )
-            .semantics { contentDescription = "Support NOOP: donate or get in touch" },
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Metrics.space14),
-        ) {
-            Icon(
-                Icons.Filled.Favorite,
-                contentDescription = null,
-                tint = Palette.metricRose,
-                modifier = Modifier.size(Metrics.iconSmall),
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Metrics.space4),
-            ) {
-                Text("Support NOOP", style = NoopType.headline, color = Palette.textPrimary)
-                Text(
-                    "Donate or get in touch. Totally optional.",
-                    style = NoopType.subhead,
-                    color = Palette.textSecondary,
-                )
-            }
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = Palette.textTertiary,
-                modifier = Modifier.size(Metrics.iconSmall),
             )
         }
     }
