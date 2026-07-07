@@ -244,7 +244,6 @@ fun SleepScreen(
     // Day-cycle sky backdrop (#698). Default ON. When off, the screen drops the liquid sky and the
     // scaffold paints the plain dark surface canvas instead — the SAME gate the liquid Today honours.
     // SharedPreferences isn't reactive, so it's read once into local state (mirrors iOS @AppStorage).
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
     // Morning-journal nudge: once per calendar day, when the freshest night ended within the last
     // 12 hours, invite the user to log how they felt. The shown-day is persisted so the sheet never
@@ -367,7 +366,6 @@ fun SleepScreen(
         // settles into the theme canvas behind the header + hero, bled full-width up behind the status bar
         // via the scaffold's topBackground plumbing. Gated on the day-cycle preference exactly like Today
         // (showDayCycleBackground ? sky : plain canvas). Replaces the classic per-hero scene backdrop.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         // #65: the transient UNDO banner after a suppressing delete. Restores the deleted row into its
         // ORIGINAL namespace + lifts the tombstone. Mirrors the macOS SleepView sleepUndoBanner.

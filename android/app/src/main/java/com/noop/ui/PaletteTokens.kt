@@ -92,14 +92,14 @@ data class PaletteTokens(
     val tipCore: Color,
 )
 
-// AMOLED dark palette — true-black canvas (#000000) with neutral lifted surfaces. Data colours
-// (recovery / strain / domains) unchanged; only chrome surfaces shift from blue-grey navy to AMOLED.
+// AMOLED dark palette — true-black canvas with monochromatic chrome (boop-app language).
+// Classic chart ramps supply data colour; accent/gold UI tokens are neutral white/gray.
 val DarkTokens = PaletteTokens(
-    surfaceBase = Color(0xFF000000), surfaceRaised = Color(0xFF0A0A0A), surfaceOverlay = Color(0xFF0F0F0F),
-    surfaceInset = Color(0xFF080808), hairline = Color(0xFF1A1A1A), hairlineStrong = Color(0xFF2A2A2A),
-    textPrimary = Color(0xFFF4F6F8), textSecondary = Color(0xFFC8CFD8), textTertiary = Color(0xFF8A94A4),
-    glowAmbient = Color(0xFF3A2D0A),
-    accent = Color(0xFF60A0E0), accentHover = Color(0xFF8FBEEC), accentMuted = Color(0xFF111111), focusRing = Color(0xFF60A0E0),
+    surfaceBase = Color(0xFF000000), surfaceRaised = Color(0xFF0C0C0C), surfaceOverlay = Color(0xFF141414),
+    surfaceInset = Color(0xFF080808), hairline = Color(0xFF242424), hairlineStrong = Color(0xFF333333),
+    textPrimary = Color(0xFFE0DEDA), textSecondary = Color(0xFFB0AEA5), textTertiary = Color(0xFF848484),
+    glowAmbient = Color(0xFF1A1A1A),
+    accent = Color(0xFFF0F0F0), accentHover = Color(0xFFFFFFFF), accentMuted = Color(0xFF1C1C1C), focusRing = Color(0xFFF0F0F0),
     recovery000 = Color(0xFFE0463C), recovery030 = Color(0xFFE8743C), recovery055 = Color(0xFFF9DF4A),
     recovery078 = Color(0xFF8FD86A), recovery100 = Color(0xFF03E095),
     strain000 = Color(0xFF9C5A14), strain033 = Color(0xFFC2762A), strain066 = Color(0xFFD98A3D), strain100 = Color(0xFFF0A85A),
@@ -113,9 +113,9 @@ val DarkTokens = PaletteTokens(
     stressColor = Color(0xFFF0A020), stressDeep = Color(0xFF4A90E2), stressBright = Color(0xFFE0662F), stressGlow = Color(0xFFF0A020),
     scenicCenter = Color(0xFF000000), scenicEdge = Color(0xFF000000), scenicStar = Color(0xFFC8CFD8),
     cardFillTop = Color(0xFF121212), cardFillBottom = Color(0xFF000000),
-    gold = Color(0xFF60A0E0), goldLight = Color(0xFF9FC8F0), goldDeep = Color(0xFF3A78C8),
-    goldDeepText = Color(0xFFFFFFFF), signalYellow = Color(0xFFFFD63D),
-    titaniumTop = Color(0xFFF1F3F5), titaniumMid = Color(0xFFC9CFD4), titaniumLow = Color(0xFF969DA4), titaniumDeep = Color(0xFF6B737B),
+    gold = Color(0xFFF0F0F0), goldLight = Color(0xFFFFFFFF), goldDeep = Color(0xFFC8C8C8),
+    goldDeepText = Color(0xFF0A0A0A), signalYellow = Color(0xFFE8E8E8),
+    titaniumTop = Color(0xFFF0F0F0), titaniumMid = Color(0xFFC8C8C8), titaniumLow = Color(0xFF969696), titaniumDeep = Color(0xFF6E6E6E),
     tipCore = Color(0xFFFFFFFF),
 )
 
@@ -125,7 +125,7 @@ val LightTokens = PaletteTokens(
     textPrimary = Color(0xFF1A2230), textSecondary = Color(0xFF4C5564), textTertiary = Color(0xFF7C8696),
     glowAmbient = Color(0xFFF0E4C0),
     // Light chrome accent shifts to the deep brand blue (gold reserved for the recovery world + FAB).
-    accent = Color(0xFF234F9E), accentHover = Color(0xFF1C3F80), accentMuted = Color(0xFFE4ECF6), focusRing = Color(0xFF2F6FCB),
+    accent = Color(0xFF1A1A1A), accentHover = Color(0xFF000000), accentMuted = Color(0xFFE8E6DC), focusRing = Color(0xFF1A1A1A),
     recovery000 = Color(0xFF8F6212), recovery030 = Color(0xFFA87718), recovery055 = Color(0xFFC28E26),
     recovery078 = Color(0xFFD2A23A), recovery100 = Color(0xFFE0B44C),
     strain000 = Color(0xFF7E460E), strain033 = Color(0xFFA4621B), strain066 = Color(0xFFC2792E), strain100 = Color(0xFFD89240),
@@ -148,32 +148,31 @@ val LightTokens = PaletteTokens(
 // MARK: - Chart style (data-viz colour mode) + the Classic throwback ramps
 
 enum class ChartStyle(val storageValue: String, val label: String) {
-    TITANIUM("titanium", "Titanium"),
     CLASSIC("classic", "Classic");
 
     companion object {
-        fun fromStorage(raw: String?): ChartStyle = entries.firstOrNull { it.storageValue == raw } ?: TITANIUM
+        fun fromStorage(raw: String?): ChartStyle = CLASSIC
     }
 }
 
-/** Chart-colour preference, persisted in `noop_prefs` and mirrored in snapshot state so a flip
- *  re-colours every gauge/chart live (the Palette ramp accessors read [ChartStylePrefs.style]). */
+/** Chart colours are fixed to Classic (throwback data ramps). */
 object ChartStylePrefs {
     private const val FILE = "noop_prefs"
     private const val KEY = "chart.style"
     private fun prefs(ctx: Context): SharedPreferences =
         ctx.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    var style by mutableStateOf(ChartStyle.TITANIUM)
+    var style by mutableStateOf(ChartStyle.CLASSIC)
         private set
 
     fun load(ctx: Context) {
-        style = ChartStyle.fromStorage(prefs(ctx).getString(KEY, ChartStyle.TITANIUM.storageValue))
+        style = ChartStyle.CLASSIC
+        prefs(ctx).edit().putString(KEY, ChartStyle.CLASSIC.storageValue).apply()
     }
 
     fun set(ctx: Context, value: ChartStyle) {
-        style = value
-        prefs(ctx).edit().putString(KEY, value.storageValue).apply()
+        style = ChartStyle.CLASSIC
+        prefs(ctx).edit().putString(KEY, ChartStyle.CLASSIC.storageValue).apply()
     }
 }
 

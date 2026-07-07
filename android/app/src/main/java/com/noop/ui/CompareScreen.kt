@@ -329,7 +329,6 @@ fun CompareScreen(vm: AppViewModel) {
     // Liquid finish (pilot pattern): the time-of-day sky settles behind the top of the screen, gated on the
     // same day-cycle-background preference the liquid Today honours. Off = the flat dark canvas path.
     val context = LocalContext.current
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
     val maxSelection = 4
     val minSelection = 2
@@ -413,7 +412,6 @@ fun CompareScreen(vm: AppViewModel) {
         subtitle = "Overlay signals, draw conclusions.",
         // Liquid sky backdrop (LiquidScreenSky.kt) in the scaffold's topBackground slot, gated on the
         // day-cycle preference — the same pilot plumbing the liquid Today uses.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
 
         // ── Metric picker section (chips + range control)

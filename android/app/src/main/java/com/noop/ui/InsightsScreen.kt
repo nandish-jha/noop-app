@@ -314,7 +314,6 @@ fun InsightsScreen(vm: AppViewModel, onOpenInsightsHub: () -> Unit = {}) {
     LazyScreenScaffold(
         title = "Insights",
         subtitle = "Interrogate what affects what.",
-        topBackground = { LiquidScreenSky() },
     ) {
 
         // --- "What moves you" deep-link into the v5 Insights Hub (ranked, lag-aware ranked-effect feed +

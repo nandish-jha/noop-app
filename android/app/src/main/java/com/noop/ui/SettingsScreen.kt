@@ -448,18 +448,8 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
     // Display-only; the stored value never changes. Mirrors into local state like the toggles above.
     var effortScale by remember { mutableStateOf(UnitPrefs.effortScale(context)) }
 
-    // App icon (v3 "Titanium & Gold") — machined-titanium (.IconDefault) or blued-titanium (.IconNavy).
-    // SharedPreferences isn't reactive, so the segmented control drives this local mirror; flipping it
-    // enables exactly one launcher alias via PackageManager (see setAppIcon below).
-    var appIconNavy by remember { mutableStateOf(NoopPrefs.appIconNavy(context)) }
-
     // Theme (System / Light / Dark) — drives NoopTheme; AppearancePrefs mirrors it in snapshot state.
     var themeMode by remember { mutableStateOf(AppearancePrefs.mode) }
-    // Chart colours (Titanium / Classic) — re-colours gauges + charts; ChartStylePrefs mirrors it live.
-    var chartStyle by remember { mutableStateOf(ChartStylePrefs.style) }
-    // Day-cycle background (#698) — the time-of-day scene behind Today. Default ON. SharedPreferences
-    // isn't reactive, so the Switch mirrors into local state; TodayScreen reads the same pref on entry.
-    var showDayCycleBackground by remember { mutableStateOf(NoopPrefs.showDayCycleBackground(context)) }
 
     // SAF launchers — CreateDocument for export, OpenDocument for import.
     val exportLauncher = rememberLauncherForActivityResult(
@@ -553,12 +543,6 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
     ScreenScaffold(
         title = "Settings",
         subtitle = "Your numbers, your strap, and how NOOP works. All on this phone.",
-        // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the static time-of-day sky settles
-        // into the theme canvas behind the top of the list, exactly like the liquid Today. This is a long,
-        // scroll-heavy list with NO hero gauge, so the liquid finish here is just the sky + liquidPress on
-        // the tappable rows. Gated on the same day-cycle background pref Today reads, so turning that off
-        // returns Settings to the plain dark canvas too.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         // Read the revision counter so every profile write recomposes this subtree
         // (SharedPreferences is not observable; `mutate` bumps `rev` after each write).
@@ -883,7 +867,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
         SettingsSection(
             icon = Icons.Filled.Brightness6,
             title = "Appearance",
-            blurb = "Choose Light, Dark, or follow your system. Dark is the signature near-black; Light keeps the same clean look on a bright canvas.",
+            blurb = "Choose Light, Dark, or follow your system. Dark uses an AMOLED black canvas with classic chart colours.",
         ) {
             FormRow(label = "Theme") {
                 SegmentedPillControl(
@@ -893,77 +877,6 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                     onSelect = { mode ->
                         themeMode = mode
                         AppearancePrefs.set(context, mode)
-                    },
-                )
-            }
-            FormRow(label = "Chart colours") {
-                // Titanium = brand gold/amber/blue ramps; Classic = throwback red→green readiness scale
-                // (cool→hot zones, green→red stress). Re-colours every gauge/chart, in both schemes.
-                SegmentedPillControl(
-                    items = listOf(ChartStyle.TITANIUM, ChartStyle.CLASSIC),
-                    selection = chartStyle,
-                    label = { it.label },
-                    onSelect = { style ->
-                        chartStyle = style
-                        ChartStylePrefs.set(context, style)
-                    },
-                )
-            }
-
-            // Day-cycle background (#698): the time-of-day scene behind Today. On by default. Off swaps it
-            // for a plain dark canvas for people who find the moving scene distracting. Takes effect next
-            // time Today is opened (the pref is read once on entry, like the other Today-screen toggles).
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Day-cycle background",
-                        style = NoopType.subhead,
-                        color = Palette.textPrimary,
-                    )
-                    Text(
-                        "Shows a soft sunrise, day, dusk and night scene behind the Today screen. Turn it off for a plain dark canvas. Your cards stay exactly as readable.",
-                        style = NoopType.footnote,
-                        color = Palette.textTertiary,
-                    )
-                }
-                Switch(
-                    checked = showDayCycleBackground,
-                    onCheckedChange = {
-                        showDayCycleBackground = it
-                        NoopPrefs.setShowDayCycleBackground(context, it)
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = Palette.surfaceBase,
-                        checkedTrackColor = Palette.accent,
-                        uncheckedThumbColor = Palette.textSecondary,
-                        uncheckedTrackColor = Palette.surfaceInset,
-                        uncheckedBorderColor = Palette.hairline,
-                    ),
-                )
-            }
-        }
-
-        // --- App icon (v3 "Titanium & Gold") ---
-        // Two staged launcher icons — machined titanium (default) and blued/dark-blue titanium. The
-        // swap is done by enabling exactly one <activity-alias> (.IconDefault / .IconNavy) at runtime;
-        // the launcher may take a beat (or briefly disappear/redraw) while it re-reads the icon.
-        SettingsSection(
-            icon = Icons.Filled.Palette,
-            title = "App icon",
-            blurb = "Choose how NOOP looks on your home screen. The launcher may take a moment to refresh the icon after you change it.",
-        ) {
-            FormRow(label = "Icon") {
-                SegmentedPillControl(
-                    items = listOf(false, true),
-                    selection = appIconNavy,
-                    label = { if (it) "Blue Titanium" else "Titanium" },
-                    onSelect = { navy ->
-                        appIconNavy = navy
-                        setAppIcon(context, navy)
                     },
                 )
             }

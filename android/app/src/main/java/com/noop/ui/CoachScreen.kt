@@ -74,7 +74,6 @@ fun CoachScreen(vm: CoachViewModel = viewModel()) {
     val configured = remember(keyVersion, provider, customConnected) { vm.isConfigured(context) }
     // Same day-cycle gate as the liquid Today: the time-of-day sky settles behind the top content when the
     // user hasn't opted out; otherwise the scaffold paints the plain dark canvas.
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
     ScreenScaffold(
         title = "Coach",
@@ -82,7 +81,6 @@ fun CoachScreen(vm: CoachViewModel = viewModel()) {
         // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the liquid sky sits behind the
         // header and the cards float over the flat canvas below. Reuses the shared LiquidScreenSky() slot
         // verbatim; when the day-cycle background is off, the scaffold paints the plain surface instead.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         if (!configured) {
             CoachSetup(vm = vm)

@@ -92,7 +92,6 @@ fun StressScreen(vm: AppViewModel, onBreathe: () -> Unit = {}) {
     // #698: the liquid day-of-sky backdrop is gated on the same "Day-cycle background" setting as Today,
     // so turning it off falls back to the flat theme canvas on every liquid screen alike.
     val context = LocalContext.current
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
     // Stored daily "stress" values (0–3), keyed by day. Loaded once per device; the
     // metricSeries store is the Android analogue of the macOS `repo.series(key:source:)`.
@@ -137,7 +136,6 @@ fun StressScreen(vm: AppViewModel, onBreathe: () -> Unit = {}) {
         // status bar via the scaffold's topBackground plumbing), and the cards float OVER it on the flat
         // surface below. The Android equivalent of the iOS `ScreenScaffold(topBackground: liquidScaffoldSky())`.
         // Gated on the "Day-cycle background" setting like Today; off passes null (the flat-canvas path).
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         when {
             model != null -> StressContent(model, daytime, stressIndex, freqHrv, onBreathe)

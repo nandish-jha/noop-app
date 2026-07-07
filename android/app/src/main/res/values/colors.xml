@@ -4,7 +4,7 @@
          chrome only; the in-app Compose surfaces use com.noop.ui.NoopTheme colors. -->
     <color name="surface_base">#FF000000</color>
     <color name="surface_raised">#FF0A0A0A</color>
-    <color name="accent">#FF18C98B</color>
+    <color name="accent">#FFF0F0F0</color>
     <color name="text_primary">#FFF4F7F5</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>

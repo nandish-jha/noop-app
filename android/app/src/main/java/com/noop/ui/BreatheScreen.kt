@@ -296,7 +296,6 @@ fun BreatheScreen(viewModel: AppViewModel) {
         // into the theme canvas behind the header + top card and bleeds full-width up behind the status bar
         // via the scaffold's topBackground plumbing. The Android equivalent of the iOS
         // `ScreenScaffold(topBackground: liquidScaffoldSky())`; the cards float OVER it on the flat canvas.
-        topBackground = { LiquidScreenSky() },
     ) {
         // Mode switch — Breathe / Resonance / Calm me.
         SegmentedPillControl(

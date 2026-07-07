@@ -204,7 +204,6 @@ fun WorkoutsScreen(vm: AppViewModel) {
         // the scaffold's topBackground plumbing), and the cards float OVER it on the flat surface below. The
         // Android equivalent of the iOS `ScreenScaffold(topBackground: liquidScaffoldSky())`. This screen has
         // no day-cycle preference gate (unlike Today), so the sky is always on.
-        topBackground = { LiquidScreenSky() },
     ) {
         // Start (or stop) a workout right here, not only on Live — mirrors the Live control (#115).
         item {

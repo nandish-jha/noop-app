@@ -484,10 +484,6 @@ fun TodayScreen(
     // Both are loaded off the main thread and re-read as the day's data grows; SharedPreferences isn't
     // reactive, so the toggle is read once into local state.
     val hydrationEnabled = remember { NoopPrefs.hydrationTracking(context) }
-    // Day-cycle scene backdrop (#698). Default ON. When off, Today drops the SceneScreenBackground and
-    // the scaffold paints the plain dark surface canvas instead. SharedPreferences isn't reactive, so
-    // this is read once into local state (mirrors iOS @AppStorage in TodayView).
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
     var hydrationTotalMl by remember { mutableStateOf(0.0) }
     // #989: `days` only changes on a data refresh, which a hydration write never causes, so the card sat
     // stale after logging a drink until an unrelated sync landed. Keying on the store's mutationSeq too
@@ -951,17 +947,6 @@ fun TodayScreen(
         // rhythm rather than the app-wide 20dp row gap, so the whole screen reads as compact/slick as iOS.
         // Scoped to this scaffold — no other screen's rhythm changes.
         rowSpacing = 12.dp,
-        // LIQUID SKY BACKDROP (the pilot pattern — LiquidScreenSky.kt): the time-of-day liquid sky sits
-        // behind the WHOLE top region, the liquid header + wordmark AND the hero vessels, full-bleed (full-width, up
-        // behind the status bar via the scaffold's topBackground plumbing), top-aligned, settling into the
-        // flat canvas over its lower half so the cards float OVER it on the theme surface. This is the
-        // Android equivalent of the iOS `ScreenScaffold(topBackground: liquidScaffoldSky())`: it replaces
-        // the classic day-cycle SceneScreenBackground with the liquid day-of-sky (LiquidSkyStatic — no
-        // per-frame cost on this scroll-heavy screen). The other liquid screens drop in the SAME
-        // LiquidScreenSky() slot verbatim.
-        // #698, gated on the "Day-cycle background" setting (default ON). Off passes null, so the scaffold
-        // paints the plain dark surface canvas instead, mirroring iOS's `showDayCycleBackground ? ... : nil`.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         item {
         // LIQUID Today header (iOS LiquidTodayView.scene parity), a full structural rebuild to mirror the
@@ -994,7 +979,6 @@ fun TodayScreen(
                 selectedDay = selectedDay,
                 batteryPct = if (liveSnap.connected) liveSnap.batteryPct else null,
                 onPickDay = { offset -> selectedDayOffset = offset },
-                onQuickActions = onQuickActions,
                 onOpenSettings = onOpenSettings,
                 onOpenDevices = onOpenDevices,
             )
@@ -1852,7 +1836,6 @@ private fun LiquidTodayHeader(
     selectedDay: LocalDate,
     batteryPct: Double?,
     onPickDay: (Int) -> Unit,
-    onQuickActions: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDevices: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1911,9 +1894,8 @@ private fun LiquidTodayHeader(
                 style = NoopType.number(28f, weight = FontWeight.Bold).copy(
                     lineHeight = 34.sp,
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    shadow = Shadow(color = Color.Black.copy(alpha = 0.4f), offset = Offset(0f, 1f), blurRadius = 10f),
                 ),
-                color = Color.White,
+                color = Palette.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1922,15 +1904,14 @@ private fun LiquidTodayHeader(
                 style = NoopType.caption.copy(
                     lineHeight = 17.sp,
                     platformStyle = PlatformTextStyle(includeFontPadding = false),
-                    shadow = Shadow(color = Color.Black.copy(alpha = 0.35f), offset = Offset(0f, 1f), blurRadius = 8f),
                 ),
-                color = Color.White.copy(alpha = 0.78f),
+                color = Palette.textSecondary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
-        // RIGHT: profile · quick-add · battery ring.
+        // RIGHT: profile avatar · battery ring.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1949,7 +1930,6 @@ private fun LiquidTodayHeader(
             ) {
                 ProfileAvatar(size = 34.dp)
             }
-            QuickActionDisc(onClick = onQuickActions)
             LiquidBatteryRing(batteryPct = batteryPct, onClick = onOpenDevices)
         }
     }

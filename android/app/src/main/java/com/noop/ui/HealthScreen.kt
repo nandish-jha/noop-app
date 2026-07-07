@@ -138,12 +138,10 @@ fun HealthScreen(
     // inside the helper) — never an animated sky behind a scrolling list. Gated on the shared "Day-cycle
     // background" pref (default ON) exactly like Today; OFF passes null so the scaffold paints the flat
     // surface canvas instead.
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(context) }
 
     LazyScreenScaffold(
         title = "Health Monitor",
         subtitle = "Live vitals, streamed from the strap.",
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         if (today == null && !hasLiveHr) {
             // Even with no history yet, a freshly-connected strap can be told to sync now (#364) — the

@@ -167,7 +167,6 @@ fun CoupledScreen(
         // the classic flat-canvas backdrop with the liquid day-of-sky (LiquidSkyStatic — no per-frame cost on
         // this scrolling column). The other liquid screens drop in the SAME LiquidScreenSky() slot verbatim.
         // Coupled has no per-screen day-cycle toggle of its own, so the sky is unconditional here.
-        topBackground = { LiquidScreenSky() },
     ) {
         HeroCard(
             recovery = recovery,

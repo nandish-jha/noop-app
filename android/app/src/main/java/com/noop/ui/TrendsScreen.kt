@@ -102,7 +102,6 @@ fun TrendsScreen(vm: AppViewModel) {
     // paints the plain dark surface canvas instead. SharedPreferences isn't reactive, so this is read once
     // into local state (mirrors Today's showDayCycleBackground gate).
     val trendsCtx = LocalContext.current
-    val showDayCycleBackground = remember { NoopPrefs.showDayCycleBackground(trendsCtx) }
 
     var range by remember { mutableStateOf(TrendsRange.Quarter) }
 
@@ -149,7 +148,6 @@ fun TrendsScreen(vm: AppViewModel) {
         // into the theme canvas behind the header + top rows, full-bleed via the scaffold's topBackground
         // plumbing. Static (LiquidSkyStatic, inside the helper) — never an animated sky behind a scrolling
         // list. Gated on the same day-cycle pref as Today; when off, the scaffold paints the flat canvas.
-        topBackground = if (showDayCycleBackground) { { LiquidScreenSky() } } else null,
     ) {
         if (days.isEmpty()) {
             item { EmptyTrends() }

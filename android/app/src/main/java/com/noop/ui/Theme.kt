@@ -49,9 +49,8 @@ object Palette {
     /** True when the light scheme is active (surface code uses this for the per-scheme idiom). */
     val isLight: Boolean get() = active === LightTokens
 
-    // Chart style — when CLASSIC, the DATA accessors below return the throwback red→green ramps
-    // (light/dark tuned). Reads ChartStylePrefs.style (snapshot state) so a flip re-colours live.
-    val isClassic: Boolean get() = ChartStylePrefs.style == ChartStyle.CLASSIC
+    // Chart style — Classic data ramps only (throwback red→green readiness, etc.).
+    val isClassic: Boolean get() = true
     private val classic: ClassicRamp get() = if (isLight) ClassicLight else ClassicDark
 
     // Surfaces.
