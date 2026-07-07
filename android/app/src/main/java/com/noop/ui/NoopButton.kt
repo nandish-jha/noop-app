@@ -82,9 +82,9 @@ private object NoopButtonMetrics {
 
 // MARK: - Design-reset accent (WHOOP blue) — pinned to the iOS values, never gold
 
-/** The reset accent blue (iOS `StrandPalette.accent`: #234F9E light / #60A0E0 dark). */
+/** The reset accent blue — matches WHOOP link / recovery-blue from brand guidelines. */
 private val noopAccentBlue: Color
-    @Composable get() = if (Palette.isLight) Color(0xFF234F9E) else Color(0xFF60A0E0)
+    @Composable get() = if (Palette.isLight) Color(0xFF234F9E) else Palette.accent
 
 /** Crisp white label/icon on accent + critical fills (iOS `goldDeepText` = #FFFFFF post-reset). */
 private val noopOnFill: Color = Color(0xFFFFFFFF)

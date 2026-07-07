@@ -92,30 +92,30 @@ data class PaletteTokens(
     val tipCore: Color,
 )
 
-// AMOLED dark palette — true-black canvas with monochromatic chrome (boop-app language).
-// Classic chart ramps supply data colour; accent/gold UI tokens are neutral white/gray.
+// WHOOP dark palette — blue-grey gradient canvas, official recovery red/yellow/green,
+// green Charge ring, blue Effort/strain accents. Matches WHOOP brand guidelines.
 val DarkTokens = PaletteTokens(
-    surfaceBase = Color(0xFF000000), surfaceRaised = Color(0xFF0C0C0C), surfaceOverlay = Color(0xFF141414),
-    surfaceInset = Color(0xFF080808), hairline = Color(0xFF242424), hairlineStrong = Color(0xFF333333),
-    textPrimary = Color(0xFFE0DEDA), textSecondary = Color(0xFFB0AEA5), textTertiary = Color(0xFF848484),
-    glowAmbient = Color(0xFF1A1A1A),
-    accent = Color(0xFFF0F0F0), accentHover = Color(0xFFFFFFFF), accentMuted = Color(0xFF1C1C1C), focusRing = Color(0xFFF0F0F0),
-    recovery000 = Color(0xFFE0463C), recovery030 = Color(0xFFE8743C), recovery055 = Color(0xFFF9DF4A),
-    recovery078 = Color(0xFF8FD86A), recovery100 = Color(0xFF03E095),
+    surfaceBase = Color(0xFF101518), surfaceRaised = Color(0xFF1C1F26), surfaceOverlay = Color(0xFF25292C),
+    surfaceInset = Color(0xFF1F2229), hairline = Color(0xFF21304A), hairlineStrong = Color(0xFF2E3C57),
+    textPrimary = Color(0xFFF4F6F8), textSecondary = Color(0xFFC8CFD8), textTertiary = Color(0xFF8A94A4),
+    glowAmbient = Color(0xFF283339),
+    accent = Color(0xFF67AEE6), accentHover = Color(0xFF8FBEEC), accentMuted = Color(0xFF16233A), focusRing = Color(0xFF67AEE6),
+    recovery000 = Color(0xFFFF0026), recovery030 = Color(0xFFFF5500), recovery055 = Color(0xFFFFDE00),
+    recovery078 = Color(0xFF7BEA38), recovery100 = Color(0xFF16EC06),
     strain000 = Color(0xFF9C5A14), strain033 = Color(0xFFC2762A), strain066 = Color(0xFFD98A3D), strain100 = Color(0xFFF0A85A),
     sleepAwake = Color(0xFFC2CCDA), sleepLight = Color(0xFF4A90E2), sleepDeep = Color(0xFF2F6FCB), sleepREM = Color(0xFF6FA8E8),
     zone1 = Color(0xFF4A90E2), zone2 = Color(0xFF3FA9C9), zone3 = Color(0xFFE8B84B), zone4 = Color(0xFFD98A3D), zone5 = Color(0xFFE0662F),
-    statusPositive = Color(0xFF03E095), statusWarning = Color(0xFFF0A020), statusCritical = Color(0xFFE0662F),
+    statusPositive = Color(0xFF16EC06), statusWarning = Color(0xFFFFDE00), statusCritical = Color(0xFFFF0026),
     metricCyan = Color(0xFF3FA9C9), metricPurple = Color(0xFF4A90E2), metricAmber = Color(0xFFD98A3D), metricRose = Color(0xFFE0662F),
-    chargeColor = Color(0xFF03E095), chargeDeep = Color(0xFF0B9D62), chargeBright = Color(0xFF6BF0B4), chargeGlow = Color(0xFF03E095),
+    chargeColor = Color(0xFF16EC06), chargeDeep = Color(0xFF0B9D62), chargeBright = Color(0xFF6BF0B4), chargeGlow = Color(0xFF16EC06),
     effortColor = Color(0xFF4090E0), effortDeep = Color(0xFF2A6FB0), effortBright = Color(0xFF74B6F0), effortGlow = Color(0xFF4090E0),
     restColor = Color(0xFF83A0B8), restDeep = Color(0xFF2F6FCB), restBright = Color(0xFF6FA8E8), restGlow = Color(0xFF4A90E2),
     stressColor = Color(0xFFF0A020), stressDeep = Color(0xFF4A90E2), stressBright = Color(0xFFE0662F), stressGlow = Color(0xFFF0A020),
-    scenicCenter = Color(0xFF000000), scenicEdge = Color(0xFF000000), scenicStar = Color(0xFFC8CFD8),
-    cardFillTop = Color(0xFF121212), cardFillBottom = Color(0xFF000000),
-    gold = Color(0xFFF0F0F0), goldLight = Color(0xFFFFFFFF), goldDeep = Color(0xFFC8C8C8),
-    goldDeepText = Color(0xFF0A0A0A), signalYellow = Color(0xFFE8E8E8),
-    titaniumTop = Color(0xFFF0F0F0), titaniumMid = Color(0xFFC8C8C8), titaniumLow = Color(0xFF969696), titaniumDeep = Color(0xFF6E6E6E),
+    scenicCenter = Color(0xFF283339), scenicEdge = Color(0xFF101518), scenicStar = Color(0xFFC8CFD8),
+    cardFillTop = Color(0xFF1C2128), cardFillBottom = Color(0xFF101518),
+    gold = Color(0xFF67AEE6), goldLight = Color(0xFF9FC8F0), goldDeep = Color(0xFF3A78C8),
+    goldDeepText = Color(0xFFFFFFFF), signalYellow = Color(0xFFFFDE00),
+    titaniumTop = Color(0xFFF1F3F5), titaniumMid = Color(0xFFC9CFD4), titaniumLow = Color(0xFF969DA4), titaniumDeep = Color(0xFF6B737B),
     tipCore = Color(0xFFFFFFFF),
 )
 

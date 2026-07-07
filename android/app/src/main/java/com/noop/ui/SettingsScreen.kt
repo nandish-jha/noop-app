@@ -9,13 +9,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -349,11 +343,21 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
     // from About — the plain-English tour of sleep sorting, scores, recording and provenance.
     var showHowNoopWorks by remember { mutableStateOf(false) }
 
+    // "WHOOP 4.0 vs 5.0/MG: what each can read and why" explainer (FI-2 / #490), reachable from the
+    // Strap section by BOTH model owners. Clears up which features each strap supports — e.g. why the
+    // strap-firmware broadcast-out is 5/MG-only while NOOP's own re-broadcast works on any strap.
+    var showModelComparison by remember { mutableStateOf(false) }
+
     // "Recalibrate Charge baseline" confirm dialog (Charge advanced). Writes now-seconds to BOTH the
     // noop.hrvBaselineEpoch and noop.recoveryBaselineEpoch prefs so foldHistory re-seeds every baseline
     // that feeds Charge from tonight onward; the standing analyze loop picks it up on its next pass.
     // Fixes a baseline poisoned by a bad first week (worn sick, or early nights that anchored too high).
     var showRecalibrateConfirm by remember { mutableStateOf(false) }
+
+    // Steps-estimate calibration screen (WHOOP 4.0), reached from the Profile card's "Steps estimate"
+    // tap-through. Mirrors the macOS StepsCalibrationSheet: honest explainer + current fit + a recent
+    // estimated-vs-phone table + a manual coefficient override. Full-screen Dialog like the guide above.
+    var showStepsCalibration by remember { mutableStateOf(false) }
 
     // Whether the "Advanced" disclosure (experimental probes, diagnostics, raw-sensor export, Trends
     // report) is expanded. Default FALSE so a first-run user lands on the everyday sections instead of
@@ -566,23 +570,25 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    NoopButton(
-                        text = if (ProfileAvatarStore.hasAvatar) "Change photo" else "Choose photo",
-                        kind = NoopButtonKind.Secondary,
-                        fullWidth = true,
-                        onClick = {
-                            avatarPickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                            )
-                        },
-                    )
-                    if (ProfileAvatarStore.hasAvatar) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         NoopButton(
-                            text = "Remove photo",
-                            kind = NoopButtonKind.Tertiary,
-                            fullWidth = true,
-                            onClick = { ProfileAvatarStore.clearAvatar(context) },
+                            text = if (ProfileAvatarStore.hasAvatar) "Change photo" else "Choose photo",
+                            kind = NoopButtonKind.Secondary,
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                avatarPickerLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                                )
+                            },
                         )
+                        if (ProfileAvatarStore.hasAvatar) {
+                            NoopButton(
+                                text = "Remove photo",
+                                kind = NoopButtonKind.Tertiary,
+                                modifier = Modifier.weight(1f),
+                                onClick = { ProfileAvatarStore.clearAvatar(context) },
+                            )
+                        }
                     }
                 }
             }
@@ -749,6 +755,54 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
+                RowDivider()
+                // Tap-through to the WHOOP 4.0 steps-ESTIMATE calibration (a SEPARATE thing from the 5/MG
+                // @57 counter divisor above): a 4.0 sends no step count, so NOOP estimates steps from
+                // motion and calibrates that to the phone. Opens the explainer + fit + comparison + manual
+                // override screen. Mirrors the macOS Profile "Steps estimate" row.
+                val stepsSummary = when {
+                    profile.stepsManualCoefficient > 0 -> "Manual"
+                    profile.stepsCalibrationCoefficient > 0 ->
+                        "Auto · ${StepsCalibrationFormat.confidenceLabel(profile.stepsCalibrationConfidence)} confidence"
+                    else -> "Not calibrated"
+                }
+                val stepsRowInteraction = remember { MutableInteractionSource() }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .liquidPress(stepsRowInteraction)
+                        .clickable(
+                            interactionSource = stepsRowInteraction,
+                            indication = null,
+                        ) { showStepsCalibration = true }
+                        .semantics {
+                            contentDescription =
+                                "Steps estimate calibration. $stepsSummary. Opens the calibration screen."
+                        }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text("Steps estimate", style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
+                    Text(
+                        stepsSummary,
+                        style = NoopType.footnote,
+                        color = if (profile.stepsManualCoefficient > 0) Palette.accent else Palette.textTertiary,
+                    )
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = Palette.textTertiary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Text(
+                    "For a WHOOP 4.0, which sends no step count: NOOP estimates steps from motion, calibrated to your phone. Tap to see how close it is and adjust it.",
+                    style = NoopType.footnote,
+                    color = Palette.textTertiary,
+                )
             }
         }
 
@@ -875,6 +929,50 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                         enabled = live.connected || live.bonded,
                         onClick = { vm.disconnect() },
                     )
+                }
+
+                // Rename the strap's BLE advertising name (WHOOP 4.0 only). Writes the name to the strap
+                // firmware (cmd 77); it reboots to apply, so the new name shows on the next connect. Handy
+                // for a second-hand band stuck on the previous owner's name. Reversible.
+                if (live.connected && !live.whoop5Detected) {
+                    var nameDraft by remember(live.advertisingName) { mutableStateOf(live.advertisingName ?: "") }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Strap name", style = NoopType.subhead, color = Palette.textPrimary)
+                        Text(
+                            "Rename your strap's Bluetooth name, useful for a second-hand band. The strap " +
+                                "reboots to apply, then reconnects with the new name.",
+                            style = NoopType.footnote,
+                            color = Palette.textTertiary,
+                        )
+                        OutlinedTextField(
+                            value = nameDraft,
+                            onValueChange = { nameDraft = it.take(24) },
+                            singleLine = true,
+                            placeholder = { Text("WHOOP", style = NoopType.body, color = Palette.textTertiary) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Palette.textPrimary,
+                                unfocusedTextColor = Palette.textPrimary,
+                                focusedBorderColor = Palette.accent,
+                                unfocusedBorderColor = Palette.hairline,
+                                cursorColor = Palette.accent,
+                                focusedContainerColor = Palette.surfaceInset,
+                                unfocusedContainerColor = Palette.surfaceInset,
+                            ),
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            NoopButton(
+                                text = "Rename",
+                                leadingIcon = Icons.Filled.Edit,
+                                kind = NoopButtonKind.Primary,
+                                enabled = live.bonded && nameDraft.isNotBlank(),
+                                onClick = { vm.ble.renameStrap(nameDraft) },
+                            )
+                            live.renameStatus?.let {
+                                Text(it, style = NoopType.footnote, color = Palette.textSecondary, modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
                 }
 
                 // Keep streaming when the app is closed (Android foreground service). On Mac, NOOP
@@ -1035,6 +1133,47 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                     fullWidth = true,
                     onClick = { LogExport.shareStrapLog(context, vm.ble.exportLogText()) },
                 )
+
+                // "WHOOP 4.0 vs 5.0/MG — what each can read and why" (FI-2 / #490). Shown to BOTH model
+                // owners, so a 4.0 user understands their strap is fully supported (and why the firmware
+                // broadcast-out is 5/MG-only while NOOP's own re-broadcast in Data Sources works on a 4.0).
+                val modelComparisonInteraction = remember { MutableInteractionSource() }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .liquidPress(modelComparisonInteraction)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Palette.surfaceInset)
+                        .border(1.dp, Palette.hairline, RoundedCornerShape(10.dp))
+                        .clickable(
+                            interactionSource = modelComparisonInteraction,
+                            indication = null,
+                        ) { showModelComparison = true }
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                        .semantics { contentDescription = "WHOOP 4.0 versus 5.0: what each can read and why" },
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Icon(
+                            Icons.Filled.Info,
+                            contentDescription = null,
+                            tint = Palette.accent,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("WHOOP 4.0 vs 5.0/MG", style = NoopType.headline, color = Palette.textPrimary)
+                            Text(
+                                "What each strap can read, and why some features differ.",
+                                style = NoopType.footnote,
+                                color = Palette.textSecondary,
+                            )
+                        }
+                        Text("›", style = NoopType.title2, color = Palette.accent)
+                    }
+                }
             }
         }
 
@@ -1054,7 +1193,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
         SettingsSection(
             icon = Icons.Filled.Science,
             title = "Experimental · WHOOP 5 / MG",
-            blurb = "Live heart rate already works on a WHOOP 5/MG strap. These probes go further and try to coax more out of it. They are guesses, off by default, and only ever touch a 5/MG strap.",
+            blurb = "Live heart rate already works on a WHOOP 5/MG strap. These probes go further and try to coax more out of it. They are guesses, off by default, and only ever touch a 5/MG strap. WHOOP 4.0 is never affected.",
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
@@ -1087,7 +1226,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                     )
                 }
                 Text(
-                    "On a 5/MG connection NOOP will send a puffin realtime-stream request after the handshake, and log what comes back. If you have a 5/MG strap, turning this on and sharing your strap log helps map the protocol.",
+                    "On a 5/MG connection NOOP will send a puffin realtime-stream request after the handshake, and log what comes back. If you have a 5/MG strap, turning this on and sharing your strap log helps map the protocol. No effect on WHOOP 4.0.",
                     style = NoopType.caption,
                     color = Palette.textTertiary,
                 )
@@ -2073,7 +2212,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Overline("Built on")
-                    AttributionRow(repo = "my-whoop", note = "WHOOP BLE protocol")
+                    AttributionRow(repo = "my-whoop", note = "WHOOP 4.0 protocol")
                     AttributionRow(repo = "goose", note = "WHOOP 5.0 protocol")
                 }
                 Text(
@@ -2081,6 +2220,51 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                     style = NoopType.footnote,
                     color = Palette.textTertiary,
                 )
+
+                RowDivider()
+
+                // Support link — opens the project's contact email (same address the
+                // Support screen lists). NOOP is anonymous, so email is the support channel.
+                val supportInteraction = remember { MutableInteractionSource() }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .liquidPress(supportInteraction)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Palette.accent.copy(alpha = 0.10f))
+                        .border(1.dp, Palette.accent.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+                        .clickable(
+                            interactionSource = supportInteraction,
+                            indication = null,
+                        ) {
+                            val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                data = Uri.parse("mailto:$SUPPORT_EMAIL")
+                                putExtra(Intent.EXTRA_SUBJECT, "NOOP support")
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (_: ActivityNotFoundException) {
+                                Toast.makeText(context, "Email us at $SUPPORT_EMAIL", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                        .semantics { contentDescription = "Contact support at $SUPPORT_EMAIL" },
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Support & contact", style = NoopType.headline, color = Palette.textPrimary)
+                            Text(
+                                "Questions, feedback, bugs: $SUPPORT_EMAIL",
+                                style = NoopType.footnote,
+                                color = Palette.textSecondary,
+                            )
+                        }
+                        Text("›", style = NoopType.title2, color = Palette.accent)
+                    }
+                }
             }
         }
 
@@ -2121,8 +2305,40 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
             }
         }
 
+        // "WHOOP 4.0 vs 5.0/MG" explainer sheet (FI-2 / #490), opened from the Strap section. Same idiom.
+        if (showModelComparison) {
+            Dialog(
+                onDismissRequest = { showModelComparison = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Palette.surfaceBase) {
+                    WhoopModelComparisonScreen(onClose = { showModelComparison = false })
+                }
+            }
+        }
+
+        // Steps-estimate calibration, opened from the Profile card's "Steps estimate" row. Same
+        // full-screen Dialog idiom; a manual-coefficient write bumps `rev` so the Profile summary
+        // row reflects the new state on dismiss.
+        if (showStepsCalibration) {
+            Dialog(
+                onDismissRequest = { showStepsCalibration = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false),
+            ) {
+                Surface(modifier = Modifier.fillMaxSize(), color = Palette.surfaceBase) {
+                    StepsCalibrationScreen(
+                        vm = vm,
+                        profile = profile,
+                        onProfileChanged = { rev++ },
+                        onClose = { showStepsCalibration = false },
+                    )
+                }
+            }
+        }
     }
 }
+
+private const val SUPPORT_EMAIL = "thenoopapp@gmail.com"
 
 // MARK: - App icon swap (v3 "Titanium & Gold")
 
@@ -2296,8 +2512,8 @@ private fun SettingsDisclosure(
 // MARK: - Section card (ports SettingsView's private SettingsSection)
 
 /**
- * A grouped settings card: tap the header to expand/collapse. Collapsed by default so the screen
- * stays compact; the blurb and controls animate in when opened.
+ * A grouped settings card: a "Settings" overline + icon + title header, an explanatory blurb, then
+ * content. A faint brand-green wash anchors the card to NOOP's neutral chrome (mirrors macOS).
  */
 @Composable
 private fun SettingsSection(
@@ -2306,52 +2522,20 @@ private fun SettingsSection(
     blurb: String,
     content: @Composable () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val chevronRotation by animateFloatAsState(
-        targetValue = if (expanded) 0f else -90f,
-        animationSpec = tween(durationMillis = 240, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-        label = "settingsSectionChevron",
-    )
-    val headerInteraction = remember { MutableInteractionSource() }
-
     NoopCard(padding = 20.dp, tint = Palette.accent) {
-        Column(verticalArrangement = Arrangement.spacedBy(if (expanded) 16.dp else 0.dp)) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .liquidPress(headerInteraction)
-                    .clip(RoundedCornerShape(12.dp))
-                    .clickable(
-                        interactionSource = headerInteraction,
-                        indication = null,
-                        onClick = { expanded = !expanded },
-                    )
-                    .semantics {
-                        contentDescription = title
-                        stateDescription = if (expanded) "Expanded" else "Collapsed"
-                    },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
-                Text(title, style = NoopType.title2, color = Palette.textPrimary, modifier = Modifier.weight(1f))
-                Icon(
-                    Icons.Filled.KeyboardArrowDown,
-                    contentDescription = null,
-                    tint = Palette.textTertiary,
-                    modifier = Modifier.size(22.dp).rotate(chevronRotation),
-                )
-            }
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(animationSpec = tween(280)) + fadeIn(animationSpec = tween(220)),
-                exit = shrinkVertically(animationSpec = tween(220)) + fadeOut(animationSpec = tween(180)),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text(blurb, style = NoopType.subhead, color = Palette.textSecondary)
-                    content()
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Overline("Settings")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(18.dp))
+                    Text(title, style = NoopType.title2, color = Palette.textPrimary)
                 }
             }
+            Text(blurb, style = NoopType.subhead, color = Palette.textSecondary)
+            content()
         }
     }
 }

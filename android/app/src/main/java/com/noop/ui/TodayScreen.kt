@@ -218,6 +218,7 @@ private data class TodayLiveSnapshot(
 @Composable
 fun TodayScreen(
     viewModel: AppViewModel,
+    onSupport: () -> Unit = {},
     onQuickActions: () -> Unit = {},
     updateStore: UpdateStore? = null,
     onOpenUpdates: () -> Unit = {},
@@ -478,19 +479,8 @@ fun TodayScreen(
         }.getOrNull()
     }
 
-    // HYDRATION — the Today "Hydration" card + detail are hidden unless hydration tracking is on.
-    // Default ON in this fork; re-read on resume so toggling in Settings takes effect immediately.
-    var hydrationEnabled by remember { mutableStateOf(NoopPrefs.hydrationTracking(context)) }
-    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                hydrationEnabled = NoopPrefs.hydrationTracking(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
+    // HYDRATION (opt-in, default OFF) — Today card hidden unless enabled in Settings.
+    val hydrationEnabled = remember { NoopPrefs.hydrationTracking(context) }
     var hydrationTotalMl by remember { mutableStateOf(0.0) }
     // #989: `days` only changes on a data refresh, which a hydration write never causes, so the card sat
     // stale after logging a drink until an unrelated sync landed. Keying on the store's mutationSeq too
@@ -986,6 +976,7 @@ fun TodayScreen(
                 selectedDay = selectedDay,
                 batteryPct = strapBattery,
                 onPickDay = { offset -> selectedDayOffset = offset },
+                onQuickActions = onQuickActions,
                 onOpenSettings = onOpenSettings,
                 onOpenDevices = onOpenDevices,
             )
@@ -1826,9 +1817,10 @@ internal fun dayNavSwipeTarget(selectedOffset: Int, dragX: Float, thresholdPx: F
     else -> dayNavNewer(selectedOffset)
 }
 
-// MARK: - Liquid Today header (iOS LiquidTodayView.scene parity)
+// MARK: - Liquid Today header (WHOOP Home parity)
 //
-// LEFT: tappable day title + human date. RIGHT: profile avatar, quick-add (+), battery ring.
+// LEFT: profile avatar (→ Settings / performance profile). CENTRE: tappable day title + date.
+// RIGHT: quick-action (+) and strap battery ring (→ Devices).
 
 @Composable
 private fun LiquidTodayHeader(
@@ -1837,6 +1829,7 @@ private fun LiquidTodayHeader(
     selectedDay: LocalDate,
     batteryPct: Double?,
     onPickDay: (Int) -> Unit,
+    onQuickActions: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDevices: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1876,7 +1869,23 @@ private fun LiquidTodayHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // LEFT: tappable title block — full remaining width, no clip (clip was trimming glyph edges).
+        // LEFT: profile avatar — WHOOP opens performance profile from top-left.
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onOpenSettings,
+                )
+                .semantics { contentDescription = "Profile and settings" },
+            contentAlignment = Alignment.Center,
+        ) {
+            ProfileAvatar(size = 36.dp)
+        }
+
+        // CENTRE: tappable day title + human date.
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -1912,25 +1921,12 @@ private fun LiquidTodayHeader(
             )
         }
 
-        // RIGHT: profile avatar · battery ring.
+        // RIGHT: quick actions + strap battery.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onOpenSettings,
-                    )
-                    .semantics { contentDescription = "Profile and settings" },
-                contentAlignment = Alignment.Center,
-            ) {
-                ProfileAvatar(size = 34.dp)
-            }
+            QuickActionDisc(onClick = onQuickActions)
             LiquidBatteryRing(batteryPct = batteryPct, onClick = onOpenDevices)
         }
     }

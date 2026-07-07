@@ -1,6 +1,17 @@
 # Release notes — nandish-jha/noop-app fork
 
-**Latest:** [v8.2.3](https://github.com/nandish-jha/noop-app/releases/tag/v8.2.3)
+**Latest:** [v8.2.4](https://github.com/nandish-jha/noop-app/releases/tag/v8.2.4)
+
+---
+
+## v8.2.4 — WHOOP UI reskin
+
+- **Theme:** Restored WHOOP dark blue-grey canvas, official recovery red/yellow/green ramp, green Charge ring, and day-cycle home background (replaces Boop AMOLED monochrome skin).
+- **Navigation:** WHOOP 5-style bottom bar — **Home · Health · Strain · Sleep · Menu** — with green active-tab highlight.
+- **Home screen:** Profile avatar top-left (WHOOP layout), day title centre, quick-actions and battery on the right.
+- **Icon:** Green recovery ring launcher mark restored.
+- **Settings & Menu:** Expanded settings sections, WHOOP 4.0 model comparison / steps calibration / strap rename flows, Support and Apple Health routes back in Menu.
+- **Defaults:** Hydration tracking off by default again; hydration card removed from default dashboard selection.
 
 ---
 

@@ -3,7 +3,7 @@
     <!--
       App theme. Compose owns all in-app styling via com.noop.ui.NoopTheme; this base
       theme only sets the window/system-bar chrome so there is no white flash before
-      the first Compose frame. AMOLED black, matching surfaceBase #000000.
+      the first Compose frame. WHOOP-dark gradient canvas (#101518).
 
       The parent is the framework dark Material theme (no extra library needed — Compose
       Material3 comes from the androidx.compose.material3 artifact, not a platform theme),

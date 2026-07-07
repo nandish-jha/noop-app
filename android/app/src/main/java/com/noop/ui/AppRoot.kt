@@ -52,7 +52,8 @@ import androidx.compose.material.icons.filled.Hexagon
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Sensors
@@ -67,6 +68,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
@@ -84,7 +88,6 @@ import com.noop.analytics.FusionSource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -162,6 +165,7 @@ private enum class Destination(
     VitalSignsDetail("vital_detail/{key}", R.string.nav_vital_signs, Icons.Filled.HealthAndSafety),
     LabBook("lab_book", R.string.nav_lab_book, Icons.Filled.HealthAndSafety),
     Rhythm("rhythm", R.string.nav_rhythm, Icons.Filled.MonitorHeart),
+    AppleHealth("apple_health", R.string.nav_apple_health, Icons.Filled.HealthAndSafety),
 
     // Group: System
     Automations("automations", R.string.nav_automations, Icons.Filled.Bolt),
@@ -175,12 +179,13 @@ private enum class Destination(
     BackupSync("backup_sync", R.string.nav_backup_sync, Icons.Filled.CloudSync),
     FusedRecord("fused_record", R.string.nav_fused_record, Icons.AutoMirrored.Filled.CompareArrows),
     Notifications("notifications", R.string.nav_notifications, Icons.Filled.Notifications),
+    Support("support", R.string.nav_support, Icons.Filled.Tune),
     Settings("settings", R.string.nav_settings, Icons.Filled.Settings),
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
-    More("more", R.string.nav_more, Icons.Filled.MoreHoriz);
+    More("more", R.string.nav_more, Icons.Filled.Menu);
 
     companion object {
         /** Resolve the destination owning the current back-stack route (defaults to Today). */
@@ -220,12 +225,12 @@ private val drawerGroups: List<DrawerGroup> = listOf(
         Destination.Intervals, Destination.Rhythm,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
-        Destination.FusedRecord, Destination.DataSources,
+        Destination.FusedRecord, Destination.AppleHealth, Destination.DataSources,
         Destination.BackupSync, Destination.Devices,
     ), defaultExpanded = false),
     DrawerGroup("App", R.string.more_group_app, listOf(
         Destination.Automations, Destination.SmartAlarm, Destination.Notifications,
-        Destination.TestCentre, Destination.Settings,
+        Destination.TestCentre, Destination.Settings, Destination.Support,
     ), defaultExpanded = false),
 )
 
@@ -289,13 +294,11 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                // Today · Trends · + · Sleep · More — quick actions (+) centred in the bar.
-                GlassBottomBar(
+                WhoopBottomBar(
                     current = current,
                     onTabSelected = { dest ->
                         if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
                     },
-                    onQuickActions = { showQuickActions = true },
                 )
             },
         ) { inner ->
@@ -317,9 +320,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Today.route) {
                     TodayScreen(
                         viewModel = viewModel,
-                        // The quick-action "+" lives in the Today header's top-right now (off the
-                        // bottom bar) — it opens the same quick-action sheet the bar used to.
                         onQuickActions = { showQuickActions = true },
+                        onSupport = { nav.navigateTopLevel(Destination.Support.route) },
                         // The Updates "ringer" — the bell sits between the Support heart and the +,
                         // and opens the inbox sheet AppRoot presents (it owns the nav for deep-links).
                         updateStore = updateStore,
@@ -377,6 +379,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Automations.route) { AutomationsScreen(viewModel) }
                 composable(Destination.SmartAlarm.route) { SmartAlarmScreen(viewModel) }
                 composable(Destination.Workouts.route) { WorkoutsScreen(viewModel) }
+                composable(Destination.Support.route) { SupportScreen() }
+                composable(Destination.AppleHealth.route) { AppleHealthScreen(viewModel) }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }
 
                 // --- Placeholder routes (later waves fill these in) ---
@@ -678,164 +682,69 @@ private fun MoreRow(dest: Destination, onClick: () -> Unit) {
     }
 }
 
-// MARK: - Glass bottom bar (Boop-style dock)
+// MARK: - WHOOP-style bottom navigation bar
+//
+// Full-width bar matching the official WHOOP app: Home · Health · Strain · Sleep · Menu.
+// Active tab uses WHOOP recovery green; inactive tabs use secondary grey.
 
 /** A single bottom-bar nav slot: the destination it switches to, plus the bar-specific icon/label. */
 private data class BarTab(val dest: Destination, val icon: ImageVector, @StringRes val labelRes: Int)
 
-private val barLeadingTabs = listOf(
-    BarTab(Destination.Today, Icons.Outlined.GridView, R.string.nav_today),
-    BarTab(Destination.Trends, Icons.AutoMirrored.Filled.TrendingUp, R.string.nav_trends),
-)
-private val barTrailingTabs = listOf(
+private val whoopBarTabs = listOf(
+    BarTab(Destination.Today, Icons.Filled.Home, R.string.nav_today),
+    BarTab(Destination.Health, Icons.Filled.MonitorHeart, R.string.nav_health),
+    BarTab(Destination.Trends, Icons.Filled.FitnessCenter, R.string.nav_trends),
     BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
+    BarTab(Destination.More, Icons.Filled.Menu, R.string.nav_more),
 )
 
 @Composable
-private fun GlassBottomBar(
+private fun WhoopBottomBar(
     current: Destination,
     onTabSelected: (Destination) -> Unit,
-    onQuickActions: () -> Unit,
 ) {
-    val moreActive = current != Destination.Today && current != Destination.Trends &&
-        current != Destination.Sleep
+    val barDestinations = whoopBarTabs.map { it.dest }.toSet()
+    val moreActive = current !in barDestinations
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(bottom = Metrics.space12)
-            .height(76.dp),
-        contentAlignment = Alignment.Center,
+    NavigationBar(
+        modifier = Modifier.navigationBarsPadding(),
+        containerColor = Palette.surfaceRaised,
+        contentColor = Palette.textSecondary,
+        tonalElevation = 0.dp,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Surface(
-                shape = RoundedCornerShape(32.dp),
-                color = Palette.surfaceRaised,
-                shadowElevation = 0.dp,
-                border = BorderStroke(1.dp, Palette.accent.copy(alpha = 0.2f)),
-            ) {
-                Row(
-                    Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    barLeadingTabs.forEach { tab ->
-                        DockNavTab(
-                            icon = tab.icon,
-                            label = stringResource(tab.labelRes),
-                            active = current == tab.dest,
-                            onClick = { onTabSelected(tab.dest) },
-                        )
-                    }
-                    barTrailingTabs.forEach { tab ->
-                        DockNavTab(
-                            icon = tab.icon,
-                            label = stringResource(tab.labelRes),
-                            active = current == tab.dest,
-                            onClick = { onTabSelected(tab.dest) },
-                        )
-                    }
-                    DockNavTab(
-                        icon = Icons.Filled.MoreHoriz,
-                        label = stringResource(R.string.nav_more),
-                        active = moreActive,
-                        onClick = { onTabSelected(Destination.More) },
+        whoopBarTabs.forEach { tab ->
+            val selected = when (tab.dest) {
+                Destination.More -> moreActive || current == Destination.More
+                else -> current == tab.dest
+            }
+            val tint = if (selected) Palette.chargeColor else Palette.textSecondary
+            NavigationBarItem(
+                selected = selected,
+                onClick = { onTabSelected(tab.dest) },
+                icon = {
+                    Icon(
+                        tab.icon,
+                        contentDescription = stringResource(tab.labelRes),
+                        tint = tint,
                     )
-                }
-            }
-            DockActionButton(onClick = onQuickActions)
-        }
-    }
-}
-
-@Composable
-private fun DockNavTab(
-    icon: ImageVector,
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
-) {
-    val progress = if (active) 1f else 0f
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f + progress * 0.06f,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "dockTabScale",
-    )
-    val bgColor = lerp(
-        Palette.surfaceInset,
-        lerp(Palette.accent, Palette.accent.copy(alpha = 0.85f), 0.22f),
-        progress,
-    )
-    val iconTint = lerp(Palette.textSecondary, Palette.goldDeepText, progress)
-
-    Surface(
-        modifier = Modifier
-            .size(48.dp)
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-            }
-            .clip(CircleShape)
-            .clickable(
-                interactionSource = interaction,
-                indication = rememberRipple(bounded = true, radius = 22.dp),
-                onClick = onClick,
-            )
-            .semantics { contentDescription = label },
-        shape = CircleShape,
-        color = bgColor,
-        shadowElevation = 0.dp,
-        border = BorderStroke(
-            1.dp,
-            Palette.accent.copy(alpha = if (active) 0.38f else 0.16f),
-        ),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
-        }
-    }
-}
-
-@Composable
-private fun DockActionButton(onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.9f else 1f,
-        animationSpec = spring(stiffness = Spring.StiffnessHigh),
-        label = "dockActionScale",
-    )
-    Surface(
-        modifier = Modifier
-            .size(52.dp)
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-            }
-            .clip(CircleShape)
-            .clickable(
-                interactionSource = interaction,
-                indication = rememberRipple(bounded = true, radius = 24.dp),
-                onClick = onClick,
-            )
-            .semantics { contentDescription = "Quick actions" },
-        shape = CircleShape,
-        color = Palette.accent,
-        shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, Palette.accent.copy(alpha = 0.45f)),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                Icons.Filled.Add,
-                contentDescription = null,
-                tint = Palette.goldDeepText,
-                modifier = Modifier.size(24.dp),
+                },
+                label = {
+                    Text(
+                        stringResource(tab.labelRes),
+                        style = NoopType.footnote.copy(
+                            fontSize = 10.sp,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                        ),
+                        color = tint,
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Palette.chargeColor,
+                    selectedTextColor = Palette.chargeColor,
+                    unselectedIconColor = Palette.textSecondary,
+                    unselectedTextColor = Palette.textSecondary,
+                    indicatorColor = Palette.chargeColor.copy(alpha = 0.12f),
+                ),
             )
         }
     }

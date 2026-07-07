@@ -448,13 +448,12 @@ object NoopPrefs {
         of(context).edit().putBoolean(KEY_CYCLE_TRACKING, enabled).apply()
     }
 
-    /** Hydration tracking (MVP): an on-device-only fluid log with a daily goal + quick-add buttons.
-     *  Default ON so the Today Hydration card is visible out of the box. Nothing is synced; the day
-     *  total lives in the local metric-series store. */
+    /** Hydration tracking (MVP): an opt-in, on-device-only fluid log with a daily goal + quick-add
+     *  buttons. OPT-IN, default OFF — the Today Hydration card only appears once enabled. */
     const val KEY_HYDRATION_TRACKING = "noop.hydrationTracking"
 
     fun hydrationTracking(context: Context): Boolean =
-        of(context).getBoolean(KEY_HYDRATION_TRACKING, true)
+        of(context).getBoolean(KEY_HYDRATION_TRACKING, false)
 
     fun setHydrationTracking(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_HYDRATION_TRACKING, enabled).apply()
@@ -467,10 +466,11 @@ object NoopPrefs {
      *  readable. Mirrors macOS @AppStorage("noop.showDayCycleBackground"). */
     const val KEY_SHOW_DAY_CYCLE_BACKGROUND = "noop.showDayCycleBackground"
 
-    fun showDayCycleBackground(context: Context): Boolean = false
+    fun showDayCycleBackground(context: Context): Boolean =
+        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, true)
 
     fun setShowDayCycleBackground(context: Context, enabled: Boolean) {
-        of(context).edit().putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, false).apply()
+        of(context).edit().putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, enabled).apply()
     }
 
     /** Coach on-device signals (v5): when ON, the opt-in BYO-key Coach's grounding context may include a
