@@ -29,7 +29,7 @@
 
 ## Download
 
-Get the latest **`NOOP-full.apk`** from **[Releases](https://github.com/nandish-jha/noop-app/releases/latest)**.
+Get the latest release APK from **[Releases](https://github.com/nandish-jha/noop-app/releases/latest)** — files are named `NOOP-full-v<version>.apk` (e.g. `NOOP-full-v8.2.3.apk`).
 
 See **[RELEASE_NOTES.md](RELEASE_NOTES.md)** for a full list of fork customizations in this build.
 
@@ -37,7 +37,7 @@ See **[RELEASE_NOTES.md](RELEASE_NOTES.md)** for a full list of fork customizati
 |---|---|
 | **Android** | 8.0+ (`minSdk 26`) |
 | **Install** | Sideload — enable "Install unknown apps" for your browser or file manager |
-| **Play Protect** | May warn because the app is not from Play Store — expected for sideloaded builds |
+| **Play Protect** | Release APKs are signed with the project's upload key. You may still see a one-time "Scan app?" prompt on first install — tap **Install without scanning** / **Install anyway**, or disable **Play Store → Play Protect → Settings → Scan apps with Play Protect** while installing |
 
 > **Not affiliated with WHOOP.** Independent, experimental software. See [DISCLAIMER.md](DISCLAIMER.md).
 
@@ -61,7 +61,7 @@ cd android
 ./gradlew assembleFullRelease
 ```
 
-Output: `android/app/build/outputs/apk/full/release/app-full-release.apk`
+Output: `android/app/build/outputs/apk/full/release/NOOP-full-v<version>.apk`
 
 Debug build (installable via USB):
 

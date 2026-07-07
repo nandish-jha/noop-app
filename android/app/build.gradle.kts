@@ -114,6 +114,15 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // Versioned APK names for releases, e.g. NOOP-full-v8.2.3.apk
+    @Suppress("DEPRECATION")
+    applicationVariants.configureEach {
+        outputs.configureEach {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            output.outputFileName = "NOOP-$flavorName-v$versionName.apk"
+        }
+    }
 }
 
 dependencies {

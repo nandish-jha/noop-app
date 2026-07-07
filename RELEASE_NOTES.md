@@ -7,7 +7,8 @@
 ## v8.2.3
 
 - **Strap battery:** Polls battery on connect, every ~45s while linked, and on keep-alive for both WHOOP 4 and 5/MG. UI keeps the last known % while connected or bonded (Today header, Settings, Devices).
-- **App icon:** Heart outline stroke thinned to 2dp to match the Boop circle weight.
+- **App icon:** Boop-style thin circle (2dp) with angular **N** monogram.
+- **Release APK:** Files are now named `NOOP-full-v8.2.3.apk` (version in the filename). Signed with a dedicated upload key so Play Protect is less likely to flag sideload installs — if prompted, tap **Install without scanning**.
 
 ---
 
@@ -59,4 +60,4 @@ export ANDROID_HOME=$HOME/.local/opt/android-sdk
 cd android && ./gradlew assembleFullRelease
 ```
 
-Output: `android/app/build/outputs/apk/full/release/app-full-release.apk`
+Output: `android/app/build/outputs/apk/full/release/NOOP-full-v<version>.apk`
