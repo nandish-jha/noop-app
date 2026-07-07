@@ -52,6 +52,10 @@ import androidx.compose.material.icons.filled.Hexagon
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MonitorHeart
+import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Notifications
@@ -68,9 +72,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
@@ -294,11 +296,12 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                WhoopBottomBar(
+                RedesignBottomBar(
                     current = current,
                     onTabSelected = { dest ->
                         if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
                     },
+                    onOpenMore = { nav.navigateTopLevel(Destination.More.route) },
                 )
             },
         ) { inner ->
@@ -351,6 +354,8 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         // The liquid header's strap battery ring taps through to Devices (iOS parity: the
                         // battery ring → router.openDevices()).
                         onOpenDevices = { nav.navigateTopLevel(Destination.Devices.route) },
+                        onOpenWorkouts = { nav.navigateTopLevel(Destination.Workouts.route) },
+                        onOpenCoach = { nav.navigateTopLevel(Destination.Coach.route) },
                     )
                 }
                 composable(Destination.Live.route) {
@@ -682,70 +687,80 @@ private fun MoreRow(dest: Destination, onClick: () -> Unit) {
     }
 }
 
-// MARK: - WHOOP-style bottom navigation bar
+// MARK: - Redesign bottom navigation (Noop Redesign - Standalone.html)
 //
-// Full-width bar matching the official WHOOP app: Home · Health · Strain · Sleep · Menu.
-// Active tab uses WHOOP recovery green; inactive tabs use secondary grey.
+// Today · Workouts · Sleep · Health — frosted bar, coral active tint.
 
 /** A single bottom-bar nav slot: the destination it switches to, plus the bar-specific icon/label. */
 private data class BarTab(val dest: Destination, val icon: ImageVector, @StringRes val labelRes: Int)
 
-private val whoopBarTabs = listOf(
-    BarTab(Destination.Today, Icons.Filled.Home, R.string.nav_today),
-    BarTab(Destination.Health, Icons.Filled.MonitorHeart, R.string.nav_health),
-    BarTab(Destination.Trends, Icons.Filled.FitnessCenter, R.string.nav_trends),
+private val redesignBarTabs = listOf(
+    BarTab(Destination.Today, Icons.Filled.WbSunny, R.string.nav_today),
+    BarTab(Destination.Workouts, Icons.Filled.FitnessCenter, R.string.nav_workouts),
     BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
-    BarTab(Destination.More, Icons.Filled.Menu, R.string.nav_more),
+    BarTab(Destination.Health, Icons.Filled.Favorite, R.string.nav_health),
 )
 
 @Composable
-private fun WhoopBottomBar(
+private fun RedesignBottomBar(
     current: Destination,
     onTabSelected: (Destination) -> Unit,
+    onOpenMore: () -> Unit,
 ) {
-    val barDestinations = whoopBarTabs.map { it.dest }.toSet()
-    val moreActive = current !in barDestinations
+    val tabDestinations = redesignBarTabs.map { it.dest }.toSet()
+    val overflowActive = current !in tabDestinations
 
-    NavigationBar(
-        modifier = Modifier.navigationBarsPadding(),
-        containerColor = Palette.surfaceRaised,
-        contentColor = Palette.textSecondary,
-        tonalElevation = 0.dp,
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
+        color = Redesign.navBar,
+        shadowElevation = 0.dp,
+        border = BorderStroke(1.dp, Redesign.navBorder),
     ) {
-        whoopBarTabs.forEach { tab ->
-            val selected = when (tab.dest) {
-                Destination.More -> moreActive || current == Destination.More
-                else -> current == tab.dest
-            }
-            val tint = if (selected) Palette.chargeColor else Palette.textSecondary
-            NavigationBarItem(
-                selected = selected,
-                onClick = { onTabSelected(tab.dest) },
-                icon = {
-                    Icon(
-                        tab.icon,
-                        contentDescription = stringResource(tab.labelRes),
-                        tint = tint,
-                    )
-                },
-                label = {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp, end = 8.dp, top = 10.dp, bottom = 26.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            redesignBarTabs.forEach { tab ->
+                val label = stringResource(tab.labelRes)
+                val selected = when (tab.dest) {
+                    Destination.Today -> current == Destination.Today
+                    Destination.Workouts -> current == Destination.Workouts || current == Destination.Trends
+                    Destination.Sleep -> current == Destination.Sleep
+                    Destination.Health -> current == Destination.Health || overflowActive
+                    else -> false
+                }
+                val tint = if (selected) Redesign.coralActive else Color(0x59F3ECE4)
+                Column(
+                    modifier = Modifier
+                        .width(70.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {
+                                if (tab.dest == Destination.Health && overflowActive && current != Destination.Health) {
+                                    onOpenMore()
+                                } else {
+                                    onTabSelected(tab.dest)
+                                }
+                            },
+                        )
+                        .semantics { contentDescription = label },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
                     Text(
-                        stringResource(tab.labelRes),
-                        style = NoopType.footnote.copy(
-                            fontSize = 10.sp,
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                        ),
+                        label,
+                        style = NoopType.caption.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
                         color = tint,
                     )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = Palette.chargeColor,
-                    selectedTextColor = Palette.chargeColor,
-                    unselectedIconColor = Palette.textSecondary,
-                    unselectedTextColor = Palette.textSecondary,
-                    indicatorColor = Palette.chargeColor.copy(alpha = 0.12f),
-                ),
-            )
+                }
+            }
         }
     }
 }

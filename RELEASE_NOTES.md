@@ -1,6 +1,18 @@
 # Release notes — nandish-jha/noop-app fork
 
-**Latest:** [v8.2.4](https://github.com/nandish-jha/noop-app/releases/tag/v8.2.4)
+**Latest:** [v8.2.5](https://github.com/nandish-jha/noop-app/releases/tag/v8.2.5)
+
+---
+
+## v8.2.5 — Standalone redesign UI
+
+Based on `Noop Redesign - Standalone.html`: warm terracotta canvas, coral Charge ring, Manrope/Outfit-style typography weights.
+
+- **Palette:** `#1C1713` canvas, cream text, coral `#F17A5C` accent, amber effort / rose rest stat cards
+- **Today:** Gradient header (strap pill · noop · profile), large Charge ring + Effort/Rest/Strap side stats, Start + alarm row, workout chips, Ask the Coach card
+- **Bottom nav:** Today · Workouts · Sleep · Health (frosted blur bar, coral active tab)
+- **Icon:** Coral recovery ring on warm gradient tile
+- **Overflow:** Tap Health while on a sub-screen opens Menu for Coach, Settings, Devices, etc.
 
 ---
 

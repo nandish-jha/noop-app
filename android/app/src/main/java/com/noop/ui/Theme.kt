@@ -369,7 +369,7 @@ object Metrics {
     val space16 = 16.dp
     val space18 = 18.dp
     val space24 = 24.dp
-    val cardRadius = 18.dp   // Bevel continuous radius (18–22dp)
+    val cardRadius = 20.dp
     val cornerXs = 2.dp
     val cornerSm = 12.dp
     val cornerBadge = 6.dp

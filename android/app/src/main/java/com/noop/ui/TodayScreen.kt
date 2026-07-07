@@ -37,13 +37,15 @@ import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.BatteryUnknown
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Rowing
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
@@ -245,6 +247,8 @@ fun TodayScreen(
     // The liquid header battery ring taps through to Devices (iOS parity: the battery ring → router.openDevices()).
     // Defaulted to fall back to Settings so the call site stays compiling; AppRoot binds it to the Devices route.
     onOpenDevices: () -> Unit = onOpenSettings,
+    onOpenWorkouts: () -> Unit = {},
+    onOpenCoach: () -> Unit = {},
 ) {
     val today by viewModel.today.collectAsStateWithLifecycle()
     val alert by viewModel.healthAlert.collectAsStateWithLifecycle()
@@ -969,7 +973,13 @@ fun TodayScreen(
             val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
             keyDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.US))
         }
-        Box(modifier = Modifier.fillMaxWidth().staggeredAppear(0)) {
+        if (selectedDayOffset == 0) {
+            RedesignTopBar(
+                batteryPct = strapBattery,
+                onOpenSettings = onOpenSettings,
+                onOpenDevices = onOpenDevices,
+            )
+        } else {
             LiquidTodayHeader(
                 dayTitle = dayTitle,
                 humanDate = humanDate,
@@ -983,12 +993,78 @@ fun TodayScreen(
         }
         }
 
-        // WORDMARK, a subtle centred "N O O P" on the sky between the header and the hero (iOS LiquidWordmark
-        // parity). White @ ~50% opacity, letter-spaced, perfectly centred; a tap plays a small random wiggle
-        // easter egg. The old Android Today had NO wordmark; this adds it. Staggered in just after the header.
         item {
-            Box(modifier = Modifier.fillMaxWidth().staggeredAppear(0)) {
-                LiquidWordmark()
+            if (selectedDayOffset == 0) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .staggeredAppear(1),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    val strain = run {
+                        val live = liveTodayStrain
+                        val stored = displayMetric?.strain
+                        if (live != null && stored != null) maxOf(live, stored) else (live ?: stored)
+                    }
+                    RedesignHeroRow(
+                        charge = displayMetric?.recovery ?: lastScoredCharge?.value,
+                        chargeCaption = chargeRecoveryCaption(displayMetric?.recovery ?: lastScoredCharge?.value),
+                        effort = strain,
+                        effortScale = effortScale,
+                        rest = restScoreForDay,
+                        strapBattery = strapBattery,
+                        onChargeTap = { showChargeBreakdown = true },
+                    )
+                    RedesignActionRow(
+                        onStart = onOpenWorkouts,
+                        onSecondary = onOpenSleep,
+                        secondaryLabel = "8:30 AM",
+                    )
+                    RedesignSectionHeader(title = "Start a workout")
+                    RedesignChipRow(
+                        chips = listOf(
+                            "Run" to Icons.AutoMirrored.Filled.DirectionsRun,
+                            "Row" to Icons.Filled.Rowing,
+                            "Strength" to Icons.Filled.FitnessCenter,
+                        ),
+                        onChip = { onOpenWorkouts() },
+                    )
+                    RedesignListCard(onClick = onOpenCoach) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(Icons.Filled.Forum, contentDescription = null, tint = Redesign.peach)
+                            Column {
+                                Text("Ask the Coach", style = NoopType.body.copy(fontWeight = FontWeight.Bold), color = Redesign.cream)
+                                Text("Get guidance from your data", style = NoopType.caption, color = Redesign.muted)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
+                        .background(LIQUID_HERO_FILL)
+                        .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(LIQUID_HERO_RADIUS))
+                        .staggeredAppear(1),
+                ) {
+                    ScoreHeroRow(
+                        day = displayMetric,
+                        restScore = restScoreForDay,
+                        recoveryCalibration = recoveryCalibration,
+                        lastScoredCharge = lastScoredCharge,
+                        effortScale = effortScale,
+                        liveTodayStrain = null,
+                        chargeProvenance = chargeProvenance,
+                        restProvenance = restProvenance,
+                        onScoreInfo = openGuide,
+                        onChargeTap = { showChargeBreakdown = true },
+                    )
+                }
             }
         }
 
@@ -1091,48 +1167,6 @@ fun TodayScreen(
         }
 
         if (alert != null) item { IllnessBanner(alert!!) }
-
-        // HERO, the three Charge / Effort / Rest score rings, Charge centred + enlarged, floating on a
-        // scenic Charge-tinted backdrop (the WHOOP-style hero, #23). The old big gold RecoveryRing hero and
-        // the "At a glance" header are gone: recovery now reads as the enlarged Charge ring, the Support
-        // heart moved to the scaffold's compact top bar, and the Synthesis card + HRV/RHR/Respiratory rows
-        // re-home below. iOS/macOS parity (TodayView.heroSection). The Effort gauge prefers the live
-        // in-progress strain for today, falling back to the stored value (#402).
-        // Staggered in as the rings hero (index 1, after the header). The ring numbers themselves tick up
-        // via GlowRing's built-in count-up (the Android equivalent of iOS GlowRing's animated `value`).
-        // The day-cycle SCENE now sits at SCREEN level (the scaffold's `topBackground`, behind the header +
-        // these rings + bled full-width up behind the status bar), so the rings float DIRECTLY on the scene
-        // rather than in a card-clipped scene of their own, mirroring iOS, where TodayView moved the scene
-        // to a screen-level `SceneScreenBackground` and the hero dropped `.sceneHeroBackground()`. No
-        // in-card scene here, and no rounded clip (a flat hero on the screen-level backdrop). The Charge
-        // ring value reads WHITE (GlowRing's centre label) with a charge-green arc, matching the iOS source.
-        item {
-        // The liquid hero CARD: a translucent near-black that floats over the day-of-sky so the vessels +
-        // white count-up numbers stay crisp — the card does the contrast work, not a muted sky. A rounded
-        // 26 corner + a faint white hairline give it the frosted-glass edge of the iOS liquid heroCard
-        // (heroFill = rgba(13,14,20,.80), stroke white@0.11). Mirrors the iOS LiquidTodayView heroCard.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .background(LIQUID_HERO_FILL)
-                .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .staggeredAppear(1),
-        ) {
-            ScoreHeroRow(
-                day = displayMetric,
-                restScore = restScoreForDay,
-                recoveryCalibration = recoveryCalibration,
-                lastScoredCharge = lastScoredCharge,
-                effortScale = effortScale,
-                liveTodayStrain = if (selectedDayOffset == 0) liveTodayStrain else null,
-                chargeProvenance = chargeProvenance,
-                restProvenance = restProvenance,
-                onScoreInfo = openGuide,
-                onChargeTap = { showChargeBreakdown = true },
-            )
-        }
-        }
 
         // LIVE SESSIONS (beta): the compact "Start session · BETA" entry, directly under the hero. Today
         // only (offset 0 — a session is a now-thing), gated on the Settings beta flag; a RUNNING session
