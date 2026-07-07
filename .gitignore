@@ -1,0 +1,55 @@
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/**/.build/
+
+# Android (see android/.gitignore for more)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/.cxx/
+android/captures/
+android/*.apk
+android/*.aab
+android/*.jks
+android/*.keystore
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Secrets / local config
+.env
+.env.*
+*.pem
+*.p12
+*.mobileprovision
+
+# Editor
+.idea/
+.vscode/
+*.iml
