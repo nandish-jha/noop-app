@@ -12,9 +12,9 @@
         android:strokeColor="#FFE0DEDA"
         android:strokeWidth="2"
         android:strokeLineCap="round" />
-    <!-- "N" inside the ring -->
+    <!-- "N": left leg, diagonal top-left → bottom-right, right leg -->
     <path
-        android:pathData="M42,66 L42,42 L54,58 L66,42 L66,66"
+        android:pathData="M42,66 L42,42 L66,66 L66,42"
         android:fillColor="#00000000"
         android:strokeColor="#FFE0DEDA"
         android:strokeWidth="3"
