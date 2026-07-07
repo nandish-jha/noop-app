@@ -100,6 +100,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -967,8 +968,7 @@ fun TodayScreen(
         // iOS liquid Today element-for-element (NOT the old numeric-date + recording-light + bell header):
         //   LEFT  — a tappable title block: the big rounded-bold day title ("Today" / "Yesterday" / the
         //           weekday) over a human date line ("Friday, 3 July"). Tap opens the day picker.
-        //   RIGHT — exactly the iOS four controls, in order: a filled HEART (→ Support), the PROFILE
-        //           AVATAR (→ Settings), a "+" ADD button (→ quick actions), and the strap BATTERY RING.
+        //   RIGHT — profile avatar, "+" quick actions, and strap battery ring.
         // The recording-status light and the notifications BELL are GONE from the header (iOS has neither);
         // the Updates inbox is relocated into the "+" quick-actions sheet (AppRoot), so the feature stays one
         // tap away without sitting in the Today header. Staggered in as the first section (index 0).
@@ -994,7 +994,6 @@ fun TodayScreen(
                 selectedDay = selectedDay,
                 batteryPct = if (liveSnap.connected) liveSnap.batteryPct else null,
                 onPickDay = { offset -> selectedDayOffset = offset },
-                onSupport = onSupport,
                 onQuickActions = onQuickActions,
                 onOpenSettings = onOpenSettings,
                 onOpenDevices = onOpenDevices,
@@ -1844,12 +1843,7 @@ internal fun dayNavSwipeTarget(selectedOffset: Int, dragX: Float, thresholdPx: F
 
 // MARK: - Liquid Today header (iOS LiquidTodayView.scene parity)
 //
-// A STRUCTURAL rebuild to mirror the iOS liquid Today header element-for-element (NOT the old numeric-date +
-// recording-light + bell header). LEFT: a tappable title block — the big rounded-bold day title over a human
-// date line ("Friday, 3 July"), tap opens the day picker. RIGHT: exactly the iOS four controls, in order —
-// a filled HEART (→ Support), the PROFILE AVATAR (→ Settings), a "+" ADD button (→ quick actions), and the
-// strap BATTERY RING (→ Devices). Each ~34dp, spacing ~8dp. There is no recording light and no bell here;
-// iOS's Today header has neither, and the Updates inbox is relocated into the "+" quick-actions sheet.
+// LEFT: tappable day title + human date. RIGHT: profile avatar, quick-add (+), battery ring.
 
 @Composable
 private fun LiquidTodayHeader(
@@ -1858,7 +1852,6 @@ private fun LiquidTodayHeader(
     selectedDay: LocalDate,
     batteryPct: Double?,
     onPickDay: (Int) -> Unit,
-    onSupport: () -> Unit,
     onQuickActions: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDevices: () -> Unit,
@@ -1896,16 +1889,14 @@ private fun LiquidTodayHeader(
 
     Row(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // LEFT: the tappable title block — big rounded-bold day title over the human date line. Taps open the
-        // day picker; a horizontal swipe across the dashboard still changes the day. weight(1f) so the title
-        // claims the leading room and never pushes the trailing control cluster. Mirrors iOS's title Button.
+        // LEFT: tappable title block — full remaining width, no clip (clip was trimming glyph edges).
         Column(
             modifier = Modifier
                 .weight(1f)
-                .clip(RoundedCornerShape(Metrics.cornerSm))
+                .heightIn(min = 44.dp)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -1917,32 +1908,33 @@ private fun LiquidTodayHeader(
         ) {
             Text(
                 dayTitle,
-                // ~28sp Bold rounded, matching iOS `StrandFont.rounded(28)`. A soft shadow so it reads on the
-                // day-of-sky. NoopType.number is the house tabular sans; Bold at 28 is the display day title.
-                style = NoopType.number(28f, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.4f), offset = Offset(0f, 1f), blurRadius = 10f)),
+                style = NoopType.number(28f, weight = FontWeight.Bold).copy(
+                    lineHeight = 34.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    shadow = Shadow(color = Color.Black.copy(alpha = 0.4f), offset = Offset(0f, 1f), blurRadius = 10f),
+                ),
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 humanDate,
-                style = NoopType.caption.copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.35f), offset = Offset(0f, 1f), blurRadius = 8f)),
+                style = NoopType.caption.copy(
+                    lineHeight = 17.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    shadow = Shadow(color = Color.Black.copy(alpha = 0.35f), offset = Offset(0f, 1f), blurRadius = 8f),
+                ),
                 color = Color.White.copy(alpha = 0.78f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
 
-        // RIGHT: the iOS four controls, in order — heart · avatar · + · battery ring. Each ~34dp, 8dp apart.
+        // RIGHT: profile · quick-add · battery ring.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // (a) Support / donate heart — a filled heart in the charge-green tint (iOS chargeColor). NOOP is
-            // free forever; donations are optional. Mirrors iOS `heart.fill` → showSupport.
-            HeaderHeartButton(onSupport = onSupport)
-            // (b) Profile avatar (the photo set in Settings, or the NOOP loop mark) → Settings. Mirrors iOS.
             Box(
                 modifier = Modifier
                     .size(34.dp)
@@ -1957,42 +1949,9 @@ private fun LiquidTodayHeader(
             ) {
                 ProfileAvatar(size = 34.dp)
             }
-            // (c) Quick-add (+), the accented primary. Mirrors iOS's LiquidAddButton (a glyph on a translucent
-            // disc → the quick-actions menu). Sized 34dp to match the rest of the liquid cluster.
             QuickActionDisc(onClick = onQuickActions)
-            // (d) Strap battery ring showing the % (iOS LiquidBatteryButton). Tap → Devices.
             LiquidBatteryRing(batteryPct = batteryPct, onClick = onOpenDevices)
         }
-    }
-}
-
-/** The header Support heart (iOS `heart.fill` → showSupport): a filled heart in the charge-green tint on a
- *  34dp tap target, with a soft shadow so it reads on the day-of-sky. NOOP is free forever; a tap opens the
- *  optional Support sheet. Mirrors the iOS liquid header heart. */
-@Composable
-private fun HeaderHeartButton(onSupport: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .liquidPress(interaction)
-            .clickable(
-                interactionSource = interaction,
-                indication = null,
-                onClick = onSupport,
-            )
-            .semantics {
-                contentDescription =
-                    "Support NOOP. It's free; donations are optional and help development."
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            Icons.Filled.Favorite,
-            contentDescription = null,
-            tint = Palette.chargeColor,
-            modifier = Modifier.size(19.dp),
-        )
     }
 }
 

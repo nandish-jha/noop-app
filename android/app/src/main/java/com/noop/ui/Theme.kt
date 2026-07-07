@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 
 // MARK: - Palette — the "Titanium & Gold" re-skin (mirrors StrandDesign/Palette.swift)
 //
-// A premium dark theme built on a deep NAVY canvas (NOT pure black) with per-domain
+// A premium dark theme built on a true-black AMOLED canvas with per-domain
 // accent "colour worlds": Charge/recovery = GOLD, Effort/strain = amber, Rest/sleep =
 // blue, HRV = teal, high stress = burnt orange. Gold is the dominant brand anchor —
 // no greens anywhere.

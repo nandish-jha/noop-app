@@ -87,7 +87,7 @@ fun TimeOfDayBackground(
     val phase = atmospherePhase(animated)
     val isLight = Palette.isLight
     val starColor = Palette.scenicStar
-    val nightDeepen = if (isLight) Color(0x00000000) else Color(0xFF0D1014)
+    val nightDeepen = if (isLight) Color(0x00000000) else Color(0xFF000000)
 
     // PERF (#scroll-jank): replaces the single phase-reading Canvas with a cached static wash + a thin
     // phase-reading drift layer (same split as the modifier form). Appearance-identical — same draw order.
@@ -124,7 +124,7 @@ fun Modifier.timeOfDayBackground(
     val phase = atmospherePhase(animated)
     val isLight = Palette.isLight
     val starColor = Palette.scenicStar
-    val nightDeepen = if (isLight) Color(0x00000000) else Color(0xFF0D1014)
+    val nightDeepen = if (isLight) Color(0x00000000) else Color(0xFF000000)
     return this
         // Static wash (deepen + gradients + sun/moon/stars) cached once — keyed on the implicit size +
         // the day part + scheme + star tone, NOT the drift phase, so the animation never re-rasterises it.
