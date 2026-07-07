@@ -1,8 +1,13 @@
 # Release notes — nandish-jha/noop-app fork
 
-**Version:** 8.2.2 (unchanged from upstream base)
+**Latest:** [v8.2.3](https://github.com/nandish-jha/noop-app/releases/tag/v8.2.3)
 
-This document lists all changes made in this personal Android fork. Download the APK from [GitHub Releases](https://github.com/nandish-jha/noop-app/releases/latest).
+---
+
+## v8.2.3
+
+- **Strap battery:** Polls battery on connect, every ~45s while linked, and on keep-alive for both WHOOP 4 and 5/MG. UI keeps the last known % while connected or bonded (Today header, Settings, Devices).
+- **App icon:** Heart outline stroke thinned to 2dp to match the Boop circle weight.
 
 ---
 

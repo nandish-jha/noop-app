@@ -249,6 +249,7 @@ fun TodayScreen(
     val alert by viewModel.healthAlert.collectAsStateWithLifecycle()
     val days by viewModel.recentDays.collectAsStateWithLifecycle()
     val live by viewModel.live.collectAsStateWithLifecycle()
+    val strapBattery by viewModel.strapBatteryPct.collectAsStateWithLifecycle()
     // The in-flight manual workout (single source of truth, survives an app kill via rehydration), so the
     // indicator card auto-appears/clears off this alone. Null↔non-null + the start drive the card; the
     // per-second clock ticks inside the card's own LaunchedEffect, never recomposing the Today body.
@@ -983,7 +984,7 @@ fun TodayScreen(
                 dayTitle = dayTitle,
                 humanDate = humanDate,
                 selectedDay = selectedDay,
-                batteryPct = if (liveSnap.connected) liveSnap.batteryPct else null,
+                batteryPct = strapBattery,
                 onPickDay = { offset -> selectedDayOffset = offset },
                 onOpenSettings = onOpenSettings,
                 onOpenDevices = onOpenDevices,
@@ -1372,7 +1373,7 @@ fun TodayScreen(
         item {
             TodaySourcesSection(
                 footer,
-                strapBatteryPct = if (liveSnap.connected) liveSnap.batteryPct?.roundToInt() else null,
+                strapBatteryPct = strapBattery?.roundToInt(),
                 strapBatteryEstimate = if (liveSnap.connected) batteryEstimateText else null,
                 expanded = sourcesExpanded,
                 onToggle = { sourcesExpanded = !sourcesExpanded },

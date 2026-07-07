@@ -3629,7 +3629,8 @@ class WhoopBleClient(
 
     /** Single funnel for battery readings (port of LiveState.setBattery). */
     private fun setBattery(pct: Double) {
-        _state.update { it.copy(batteryPct = pct) }
+        val clamped = pct.coerceIn(0.0, 100.0)
+        _state.update { it.copy(batteryPct = clamped) }
         // Battery test mode: one tagged (t, soc) line per reading, gated zero-cost when off (the gate is a
         // single SharedPreferences bool read; the formatter below only runs when the mode is on). Rides the
         // redacting log() sink; the Room battery series is the readout + trace source (#713, Test Centre).
@@ -3690,6 +3691,7 @@ class WhoopBleClient(
         val realtimeWantNow = screenWantsRealtime || continuousCaptureWantsNow()
         wantsRealtime = realtimeWantNow
         if (realtimeWantNow) { realtimeArmed = true; send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(1)) }
+        refreshBattery()
     }
 
     // ====================================================================================
@@ -3701,6 +3703,7 @@ class WhoopBleClient(
         handler.removeCallbacks(keepAliveRunnable)
         keepAliveTick = 0
         lastDataAtMs = System.currentTimeMillis()   // arm the watchdog from "now", not 1970
+        handler.post { refreshBattery() }
         handler.postDelayed(keepAliveRunnable, KEEPALIVE_INTERVAL_MS)
     }
 
@@ -3770,13 +3773,13 @@ class WhoopBleClient(
                     )
                 }
                 reconcileRealtime()   // recomputes wantsRealtime from the fresh predicate; toggles only on an edge
-                // WHOOP 4.0 only: re-arm realtime HR so the firmware can't let it lapse (while the Live
-                // screen wants it), and poll battery (~60s) — which also keeps the link warm. A 5/MG
-                // strap rejects WHOOP4-framed commands, so we skip them and rely on re-subscribe + bounce.
+                keepAliveTick += 1
                 if (connectedFamily == DeviceFamily.WHOOP4) {
                     if (wantsRealtime) { realtimeArmed = true; send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(1)) }
-                    keepAliveTick += 1
                     if (keepAliveTick % 2 == 0) send(CommandNumber.GET_BATTERY_LEVEL)
+                } else if (keepAliveTick % 2 == 0) {
+                    // 5/MG: poll the standard 0x2A19 characteristic (proprietary cmd isn't framed).
+                    refreshBattery()
                 }
             }
         }
@@ -4176,6 +4179,7 @@ class WhoopBleClient(
                 send(CommandNumber.SET_CLOCK, setClockPayload(), withResponse = true)
                 send(CommandNumber.GET_CLOCK, byteArrayOf(), withResponse = true)
                 log("WHOOP 5/MG: clock synced (set/get) — strap can persist history now")
+                refreshBattery()
                 if (!backfillStarted) {
                     backfillStarted = true
                     handler.postDelayed({ requestSync() }, INITIAL_BACKFILL_DELAY_MS)

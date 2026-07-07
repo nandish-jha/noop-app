@@ -52,6 +52,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -304,6 +305,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Live connection + biometric snapshot, surfaced straight from the BLE client. */
     val live: StateFlow<LiveState> = ble.state
 
+    /** Last strap battery % seen this process — kept when live reads are sparse between polls. */
+    private val _lastKnownBatteryPct = MutableStateFlow<Double?>(null)
+
+    /** Battery % for UI: live reading when present, else last-known while connected or bonded. */
+    val strapBatteryPct: StateFlow<Double?> = combine(ble.state, _lastKnownBatteryPct) { state, last ->
+        val pct = state.batteryPct ?: last
+        if ((state.connected || state.bonded) && pct != null) pct else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     /** Which strap the user is pairing — drives the scan filter in [connect]. Defaults to WHOOP 4.0. */
     private val _selectedModel = MutableStateFlow(WhoopModel.WHOOP4)
     val selectedModel: StateFlow<WhoopModel> = _selectedModel.asStateFlow()
@@ -523,6 +533,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Resolve the active band's name for the Live screen header (MW-6). Falls back to "WHOOP" in the
         // UI until this first read lands.
         refreshActiveDeviceName()
+        viewModelScope.launch(Dispatchers.IO) {
+            repo.latestBattery(deviceId)?.soc?.let { _lastKnownBatteryPct.value = it }
+        }
+        viewModelScope.launch {
+            var wasConnected = false
+            ble.state.collect { state ->
+                state.batteryPct?.let { _lastKnownBatteryPct.value = it }
+                if (state.connected && !wasConnected) {
+                    delay(1_500)
+                    if (ble.state.value.connected) ble.refreshBattery()
+                }
+                wasConnected = state.connected
+            }
+        }
+        viewModelScope.launch {
+            while (isActive) {
+                delay(45_000)
+                if (ble.state.value.connected) ble.refreshBattery()
+            }
+        }
         // #577 — surface the strap's smart-alarm wake as a local notification too (iOS AppModel.postSmartAlarm
         // twin), so a pocketed phone doesn't miss the wrist buzz. Self-gates on the wrist-alerts master.
         ble.onSmartAlarmFired = { com.noop.notif.SmartAlarmNotifier.onFired(appContext) }

@@ -322,6 +322,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val live by vm.live.collectAsStateWithLifecycle()
+    val strapBattery by vm.strapBatteryPct.collectAsStateWithLifecycle()
 
     // The profile store is stable for the lifetime of this screen; a version counter
     // forces recomposition after each mutating write (SharedPreferences isn't reactive).
@@ -844,7 +845,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                         tone = strapTone(live.bonded, live.connected),
                         pulsing = live.connected,
                     )
-                    live.batteryPct?.let { pct ->
+                    strapBattery?.let { pct ->
                         StatePill(
                             title = "Battery ${pct.roundToInt()}%" +
                                 if (live.charging == true) " · Charging" else "",
