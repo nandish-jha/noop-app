@@ -253,5 +253,6 @@ object AppearancePrefs {
     fun set(ctx: Context, value: AppearanceMode) {
         mode = value
         prefs(ctx).edit().putString(KEY, value.storageValue).apply()
+        runCatching { com.noop.widget.WidgetThemeRefresh.request(ctx) }
     }
 }

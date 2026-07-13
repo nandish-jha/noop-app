@@ -43,6 +43,7 @@ object PaletteFamilyPrefs {
     fun set(ctx: Context, value: PaletteFamily) {
         family = value
         prefs(ctx).edit().putString(KEY, value.storageKey).apply()
+        runCatching { com.noop.widget.WidgetThemeRefresh.request(ctx) }
     }
 }
 

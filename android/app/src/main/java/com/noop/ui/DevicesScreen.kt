@@ -95,7 +95,6 @@ fun DevicesScreen(
 ) {
     val scope = rememberCoroutineScope()
     val live by viewModel.live.collectAsStateWithLifecycle()
-    val strapBattery by viewModel.strapBatteryPct.collectAsStateWithLifecycle()
 
     // Liquid sky backdrop gate — the SAME "Day-cycle background" preference the liquid Today honours (#698,
     // default ON). Off falls back to the flat dark canvas, so the setting governs every liquid screen alike.
@@ -154,8 +153,8 @@ fun DevicesScreen(
                 isLiveConnected = device.status == DeviceStatus.active.name && live.connected,
                 // The live battery belongs to whichever device is ACTIVE + connected (WHOOP, a generic
                 // strap, or an FTMS machine all funnel into live.batteryPct). null otherwise.
-                liveBatteryPct = if (device.status == DeviceStatus.active.name && (live.connected || live.bonded))
-                    strapBattery?.let { Math.round(it).toInt() } else null,
+                liveBatteryPct = if (device.status == DeviceStatus.active.name && live.connected)
+                    live.batteryPct?.let { Math.round(it).toInt() } else null,
                 // Firmware version from the connect handshake: only for the active, connected strap.
                 liveFirmware = if (device.status == DeviceStatus.active.name && live.connected)
                     live.strapFirmware else null,

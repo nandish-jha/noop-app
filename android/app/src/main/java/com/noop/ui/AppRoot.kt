@@ -15,7 +15,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -52,12 +50,7 @@ import androidx.compose.material.icons.filled.Hexagon
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.MonitorHeart
-import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.WbSunny
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Sensors
@@ -71,7 +64,6 @@ import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationDrawerItem
@@ -167,7 +159,6 @@ private enum class Destination(
     VitalSignsDetail("vital_detail/{key}", R.string.nav_vital_signs, Icons.Filled.HealthAndSafety),
     LabBook("lab_book", R.string.nav_lab_book, Icons.Filled.HealthAndSafety),
     Rhythm("rhythm", R.string.nav_rhythm, Icons.Filled.MonitorHeart),
-    AppleHealth("apple_health", R.string.nav_apple_health, Icons.Filled.HealthAndSafety),
 
     // Group: System
     Automations("automations", R.string.nav_automations, Icons.Filled.Bolt),
@@ -181,13 +172,12 @@ private enum class Destination(
     BackupSync("backup_sync", R.string.nav_backup_sync, Icons.Filled.CloudSync),
     FusedRecord("fused_record", R.string.nav_fused_record, Icons.AutoMirrored.Filled.CompareArrows),
     Notifications("notifications", R.string.nav_notifications, Icons.Filled.Notifications),
-    Support("support", R.string.nav_support, Icons.Filled.Tune),
     Settings("settings", R.string.nav_settings, Icons.Filled.Settings),
     TestCentre("test_centre", R.string.nav_test_centre, Icons.Filled.BugReport),
 
     // The "More" tab: its own navigated page (mirroring the iOS More tab) that hosts the full
     // grouped destination list. It is NOT itself in any [DrawerGroup] — it's the door to them.
-    More("more", R.string.nav_more, Icons.Filled.Menu);
+    More("more", R.string.nav_more, Icons.Filled.MoreHoriz);
 
     companion object {
         /** Resolve the destination owning the current back-stack route (defaults to Today). */
@@ -227,12 +217,12 @@ private val drawerGroups: List<DrawerGroup> = listOf(
         Destination.Intervals, Destination.Rhythm,
     ), defaultExpanded = true),
     DrawerGroup("Data", R.string.more_group_data, listOf(
-        Destination.FusedRecord, Destination.AppleHealth, Destination.DataSources,
+        Destination.FusedRecord, Destination.DataSources,
         Destination.BackupSync, Destination.Devices,
     ), defaultExpanded = false),
     DrawerGroup("App", R.string.more_group_app, listOf(
         Destination.Automations, Destination.SmartAlarm, Destination.Notifications,
-        Destination.TestCentre, Destination.Settings, Destination.Support,
+        Destination.TestCentre, Destination.Settings,
     ), defaultExpanded = false),
 )
 
@@ -296,12 +286,12 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
         Scaffold(
             containerColor = Palette.surfaceBase,
             bottomBar = {
-                RedesignBottomBar(
+                // Today · Trends · + · Sleep · More — quick actions (+) centred in the bar.
+                GlassBottomBar(
                     current = current,
                     onTabSelected = { dest ->
                         if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
                     },
-                    onOpenMore = { nav.navigateTopLevel(Destination.More.route) },
                     onQuickActions = { showQuickActions = true },
                 )
             },
@@ -324,8 +314,9 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Today.route) {
                     TodayScreen(
                         viewModel = viewModel,
+                        // The quick-action "+" lives in the Today header's top-right now (off the
+                        // bottom bar) — it opens the same quick-action sheet the bar used to.
                         onQuickActions = { showQuickActions = true },
-                        onSupport = { nav.navigateTopLevel(Destination.Support.route) },
                         // The Updates "ringer" — the bell sits between the Support heart and the +,
                         // and opens the inbox sheet AppRoot presents (it owns the nav for deep-links).
                         updateStore = updateStore,
@@ -355,8 +346,6 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         // The liquid header's strap battery ring taps through to Devices (iOS parity: the
                         // battery ring → router.openDevices()).
                         onOpenDevices = { nav.navigateTopLevel(Destination.Devices.route) },
-                        onOpenWorkouts = { nav.navigateTopLevel(Destination.Workouts.route) },
-                        onOpenCoach = { nav.navigateTopLevel(Destination.Coach.route) },
                     )
                 }
                 composable(Destination.Live.route) {
@@ -385,8 +374,6 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 composable(Destination.Automations.route) { AutomationsScreen(viewModel) }
                 composable(Destination.SmartAlarm.route) { SmartAlarmScreen(viewModel) }
                 composable(Destination.Workouts.route) { WorkoutsScreen(viewModel) }
-                composable(Destination.Support.route) { SupportScreen() }
-                composable(Destination.AppleHealth.route) { AppleHealthScreen(viewModel) }
                 composable(Destination.Intelligence.route) { IntelligenceScreen(viewModel) }
 
                 // --- Placeholder routes (later waves fill these in) ---
@@ -688,33 +675,28 @@ private fun MoreRow(dest: Destination, onClick: () -> Unit) {
     }
 }
 
-// MARK: - Boop-style floating dock
-//
-// Mirrors boop-app UnifiedBottomNav: floating pill (22dp), tabs Today · Workouts | + | Sleep · Health,
-// cream FAB with coral border, terracotta accent on selected icons.
+// MARK: - Glass bottom bar (Boop-style dock)
 
 /** A single bottom-bar nav slot: the destination it switches to, plus the bar-specific icon/label. */
 private data class BarTab(val dest: Destination, val icon: ImageVector, @StringRes val labelRes: Int)
 
-private val redesignLeadingTabs = listOf(
-    BarTab(Destination.Today, Icons.Filled.WbSunny, R.string.nav_today),
-    BarTab(Destination.Workouts, Icons.Filled.FitnessCenter, R.string.nav_workouts),
+private val barLeadingTabs = listOf(
+    BarTab(Destination.Today, Icons.Outlined.GridView, R.string.nav_today),
+    BarTab(Destination.Trends, Icons.AutoMirrored.Filled.TrendingUp, R.string.nav_trends),
 )
-private val redesignTrailingTabs = listOf(
+private val barTrailingTabs = listOf(
     BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
-    BarTab(Destination.Health, Icons.Filled.Favorite, R.string.nav_health),
 )
 
 @Composable
-private fun RedesignBottomBar(
+private fun GlassBottomBar(
     current: Destination,
     onTabSelected: (Destination) -> Unit,
-    onOpenMore: () -> Unit,
     onQuickActions: () -> Unit,
 ) {
-    val allTabs = redesignLeadingTabs + redesignTrailingTabs
-    val tabDestinations = allTabs.map { it.dest }.toSet()
-    val overflowActive = current !in tabDestinations
+    // Boop UnifiedBottomNav chrome on the classic destination set (Today · Trends · Sleep · More).
+    val moreActive = current != Destination.Today && current != Destination.Trends &&
+        current != Destination.Sleep
 
     Box(
         modifier = Modifier
@@ -724,9 +706,9 @@ private fun RedesignBottomBar(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(Redesign.dockRadius),
-            color = Redesign.navBar,
-            border = BorderStroke(1.dp, Redesign.peach.copy(alpha = 0.14f)),
+            shape = RoundedCornerShape(22.dp),
+            color = Palette.surfaceBase.copy(alpha = 0.85f),
+            border = BorderStroke(1.dp, Palette.accent.copy(alpha = 0.14f)),
             shadowElevation = 6.dp,
         ) {
             Row(
@@ -736,54 +718,51 @@ private fun RedesignBottomBar(
                     .padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                redesignLeadingTabs.forEach { tab ->
-                    BoopDockTab(
-                        tab = tab,
-                        selected = current == tab.dest ||
-                            (tab.dest == Destination.Workouts && current == Destination.Trends),
+                barLeadingTabs.forEach { tab ->
+                    DockNavTab(
+                        icon = tab.icon,
+                        label = stringResource(tab.labelRes),
+                        active = current == tab.dest,
                         modifier = Modifier.weight(1f),
                         onClick = { onTabSelected(tab.dest) },
                     )
                 }
-                BoopDockAddButton(onClick = onQuickActions)
-                redesignTrailingTabs.forEach { tab ->
-                    val selected = when (tab.dest) {
-                        Destination.Sleep -> current == Destination.Sleep
-                        Destination.Health -> current == Destination.Health || overflowActive
-                        else -> current == tab.dest
-                    }
-                    BoopDockTab(
-                        tab = tab,
-                        selected = selected,
+                DockActionButton(onClick = onQuickActions)
+                barTrailingTabs.forEach { tab ->
+                    DockNavTab(
+                        icon = tab.icon,
+                        label = stringResource(tab.labelRes),
+                        active = current == tab.dest,
                         modifier = Modifier.weight(1f),
-                        onClick = {
-                            if (tab.dest == Destination.Health && overflowActive && current != Destination.Health) {
-                                onOpenMore()
-                            } else {
-                                onTabSelected(tab.dest)
-                            }
-                        },
+                        onClick = { onTabSelected(tab.dest) },
                     )
                 }
+                DockNavTab(
+                    icon = Icons.Filled.MoreHoriz,
+                    label = stringResource(R.string.nav_more),
+                    active = moreActive,
+                    modifier = Modifier.weight(1f),
+                    onClick = { onTabSelected(Destination.More) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun BoopDockTab(
-    tab: BarTab,
-    selected: Boolean,
+private fun DockNavTab(
+    icon: ImageVector,
+    label: String,
+    active: Boolean,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val label = stringResource(tab.labelRes)
     val iconScale by animateFloatAsState(
-        targetValue = if (selected) 1.15f else 1f,
+        targetValue = if (active) 1.15f else 1f,
         animationSpec = spring(stiffness = 420f, dampingRatio = 0.72f),
-        label = "boopDockIconScale",
+        label = "dockIconScale",
     )
-    val tint = if (selected) Redesign.coral else Redesign.navUnselected.copy(alpha = 0.55f)
+    val tint = if (active) Palette.accent else Palette.textTertiary.copy(alpha = 0.55f)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -797,7 +776,7 @@ private fun BoopDockTab(
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            tab.icon,
+            icon,
             contentDescription = null,
             tint = tint,
             modifier = Modifier
@@ -811,18 +790,18 @@ private fun BoopDockTab(
 }
 
 @Composable
-private fun BoopDockAddButton(onClick: () -> Unit) {
+private fun DockActionButton(onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.88f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "boopDockAddScale",
+        label = "dockAddScale",
     )
     val rotation by animateFloatAsState(
         targetValue = if (pressed) 45f else 0f,
         animationSpec = spring(stiffness = 380f, dampingRatio = 0.7f),
-        label = "boopDockAddRotation",
+        label = "dockAddRotation",
     )
     Box(
         modifier = Modifier.padding(horizontal = 10.dp),
@@ -831,8 +810,8 @@ private fun BoopDockAddButton(onClick: () -> Unit) {
         Surface(
             onClick = onClick,
             shape = RoundedCornerShape(16.dp),
-            color = Redesign.cream,
-            border = BorderStroke(1.5.dp, Redesign.coral.copy(alpha = 0.55f)),
+            color = Palette.textPrimary,
+            border = BorderStroke(1.5.dp, Palette.accent.copy(alpha = 0.55f)),
             shadowElevation = 6.dp,
             modifier = Modifier
                 .size(50.dp)
@@ -848,8 +827,8 @@ private fun BoopDockAddButton(onClick: () -> Unit) {
                 Icon(
                     Icons.Filled.Add,
                     contentDescription = null,
-                    tint = Redesign.canvas,
-                    modifier = Modifier.size(28.dp),
+                    tint = Palette.surfaceBase,
+                    modifier = Modifier.size(26.dp),
                 )
             }
         }

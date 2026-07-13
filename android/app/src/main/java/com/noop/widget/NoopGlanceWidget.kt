@@ -12,6 +12,7 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.updateAll
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -28,30 +29,28 @@ import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.noop.R
 import com.noop.ui.MainActivity
+import com.noop.ui.PaletteFamily
+import com.noop.ui.PaletteTokens
+import com.noop.ui.resolveBoopTokens
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Home-screen widget: today's three top scores (Rest · Charge · Effort, Charge centred), with live HR
- * and strap battery at a glance (#516). Renders purely from the [WidgetSnapshotStore] SharedPreferences
- * snapshot — no BLE, no DB — so it costs nothing and survives process death. Tapping anywhere opens the
- * app. Each score is honest-null ("—") until NOOP has scored it; it never fabricates a number.
- *
- * Colours are hardcoded mirrors of the Titanium & Gold [com.noop.ui.Palette] (navy surface / textPrimary
- * / textSecondary, and the gold → amber → burnt-orange recovery tiers): Glance composes outside our
- * theme, and the widget is deliberately always-dark like the app.
+ * and strap battery at a glance (#516). Colours follow the app's Appearance + Boop palette family
+ * via [resolveBoopTokens] (same path as [com.noop.ui.NoopTheme]).
  */
 class NoopGlanceWidget : GlanceAppWidget() {
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        // A corrupt pref must degrade to the empty-state widget, not throw mid-provide.
         val snap = runCatching { WidgetSnapshotStore.load(context) }.getOrDefault(WidgetSnapshot())
-        // Follow the app's Light/Dark/System theme (read straight from noop_prefs; the widget runs in a
-        // separate process so it can't see the in-app snapshot state). System resolves off the device's
-        // night-mode config. Any failure degrades to dark (the historical default).
+        val prefs = context.getSharedPreferences("noop_prefs", Context.MODE_PRIVATE)
         val dark = runCatching {
-            when (context.getSharedPreferences("noop_prefs", Context.MODE_PRIVATE)
-                .getString("theme.appearance", "system")) {
+            when (prefs.getString("theme.appearance", "system")) {
                 "light" -> false
                 "dark" -> true
                 else -> (context.resources.configuration.uiMode and
@@ -59,13 +58,11 @@ class NoopGlanceWidget : GlanceAppWidget() {
                     android.content.res.Configuration.UI_MODE_NIGHT_YES
             }
         }.getOrDefault(true)
-        provideContent { WidgetContent(snap, dark) }
+        val family = PaletteFamily.fromStorage(prefs.getString("theme.palette_family", null))
+        val tokens = resolveBoopTokens(family, dark)
+        provideContent { WidgetContent(snap, tokens) }
     }
 
-    /** Defence-in-depth, NOT a crash fix: Glance 1.1.0's default already contains composition errors
-     *  (it renders its built-in error layout; verified in bytecode while investigating #82 — which we
-     *  could not reproduce). This override only swaps that generic layout for our own friendlier one.
-     *  The widget heals on the next successful push. */
     override fun onCompositionError(
         context: Context,
         glanceId: GlanceId,
@@ -79,32 +76,23 @@ class NoopGlanceWidget : GlanceAppWidget() {
     }
 }
 
-// Per-scheme widget colours (mirror the app palette; deepened gold/amber/orange on light for contrast
-// on the warm-paper card). The widget is a separate surface, so these are local — not Palette reads.
-private fun widgetSurface(dark: Boolean) = ColorProvider(if (dark) Color(0xFF000000) else Color(0xFFF4F1EA))
-private fun widgetTextPrimary(dark: Boolean) = ColorProvider(if (dark) Color(0xFFF4F6F8) else Color(0xFF1A2230))
-private fun widgetTextSecondary(dark: Boolean) = ColorProvider(if (dark) Color(0xFF8A94A4) else Color(0xFF7C8696))
+/** Push a theme refresh to every NOOP widget (Appearance / palette changes in Settings). */
+object WidgetThemeRefresh {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
-/** Recovery-band colour, the app-wide 67 / 34 cuts (RecoveryScorer.band); deepened on light. Charge and
- *  Rest both read on the recovery band in the app, so they share this. */
-private fun bandColor(recovery: Int, dark: Boolean): ColorProvider = ColorProvider(
-    when {
-        recovery >= 67 -> if (dark) Color(0xFFE8B84B) else Color(0xFFB07D17)
-        recovery >= 34 -> if (dark) Color(0xFFD98A3D) else Color(0xFFC2792E)
-        else -> if (dark) Color(0xFFE0662F) else Color(0xFFC84E1E)
-    },
-)
-
-/** Effort tint — the app's strain colour (Palette.strain066), a distinct teal so Effort doesn't read as
- *  another recovery band. Deepened on light for contrast on the warm-paper card. (#516) */
-private fun effortColor(dark: Boolean): ColorProvider =
-    ColorProvider(if (dark) Color(0xFF4FB6A8) else Color(0xFF2E7D74))
+    fun request(context: Context) {
+        val app = context.applicationContext
+        scope.launch {
+            runCatching { NoopGlanceWidget().updateAll(app) }
+        }
+    }
+}
 
 @Composable
-private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
-    val surface = widgetSurface(dark)
-    val textPrimary = widgetTextPrimary(dark)
-    val textSecondary = widgetTextSecondary(dark)
+private fun WidgetContent(snap: WidgetSnapshot, tokens: PaletteTokens) {
+    val surface = ColorProvider(tokens.surfaceBase)
+    val textPrimary = ColorProvider(tokens.textPrimary)
+    val textSecondary = ColorProvider(tokens.textSecondary)
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -115,8 +103,6 @@ private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // The three top scores in one row, Charge centred + enlarged (the app's hero order Rest · Charge ·
-        // Effort). Each cell is honest-null until that score exists — never a fabricated number. (#516)
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -125,7 +111,7 @@ private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
             ScoreCell(
                 label = "REST",
                 pct = snap.restPct,
-                color = snap.restPct?.let { bandColor(it, dark) } ?: textSecondary,
+                color = snap.restPct?.let { ColorProvider(bandColor(it, tokens)) } ?: textSecondary,
                 valueSize = 22.sp,
                 textSecondary = textSecondary,
                 modifier = GlanceModifier.defaultWeight(),
@@ -133,7 +119,7 @@ private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
             ScoreCell(
                 label = "CHARGE",
                 pct = snap.recoveryPct,
-                color = snap.recoveryPct?.let { bandColor(it, dark) } ?: textSecondary,
+                color = snap.recoveryPct?.let { ColorProvider(bandColor(it, tokens)) } ?: textSecondary,
                 valueSize = 30.sp,
                 textSecondary = textSecondary,
                 modifier = GlanceModifier.defaultWeight(),
@@ -141,7 +127,7 @@ private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
             ScoreCell(
                 label = "EFFORT",
                 pct = snap.effortPct,
-                color = snap.effortPct?.let { effortColor(dark) } ?: textSecondary,
+                color = snap.effortPct?.let { ColorProvider(tokens.effortColor) } ?: textSecondary,
                 valueSize = 22.sp,
                 textSecondary = textSecondary,
                 modifier = GlanceModifier.defaultWeight(),
@@ -172,9 +158,15 @@ private fun WidgetContent(snap: WidgetSnapshot, dark: Boolean) {
     }
 }
 
-/** One score column in the 2x2 widget: a small overline label over a big band-coloured "N%" (or a calm
- *  "—" in the secondary colour while that score is still null, so an unscored cell reads honestly rather
- *  than as a broken zero). (#516) */
+/** Recovery-band colour using the active Boop scheme's recovery ramp (67 / 34 cuts). */
+private fun bandColor(recovery: Int, tokens: PaletteTokens): Color = when {
+    recovery >= 78 -> tokens.recovery100
+    recovery >= 67 -> tokens.recovery078
+    recovery >= 55 -> tokens.recovery055
+    recovery >= 34 -> tokens.recovery030
+    else -> tokens.recovery000
+}
+
 @Composable
 private fun ScoreCell(
     label: String,

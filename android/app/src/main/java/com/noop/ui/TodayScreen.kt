@@ -37,15 +37,13 @@ import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.BatteryUnknown
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Forum
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Functions
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MonitorHeart
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Rowing
 import androidx.compose.material.icons.filled.TrackChanges
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Warning
@@ -185,8 +183,9 @@ private var todayDidSnapToTodayThisLaunch = false
 // The hero card the score vessels float on, ported from the iOS LiquidTodayView. `heroFill` is a
 // translucent near-black (mock rgba(13,14,20,.80)) so it floats over the day-of-sky; the vessels + white
 // count-up numbers read crisp on it. Radius 26 + a white@0.11 hairline give the frosted-glass edge.
-private val LIQUID_HERO_FILL: Color = Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
-private val LIQUID_HERO_RADIUS: Dp = 26.dp
+// Hero shell uses the active Boop palette surface (not a fixed navy wash).
+private fun liquidHeroFill(): Color = Palette.surfaceRaised.copy(alpha = 0.92f)
+private val LIQUID_HERO_RADIUS: Dp = 16.dp
 
 // The Vitality vessel purple (#9b7bff) — no exact Palette token in this theme, so a fixed brand literal
 // matching the iOS liquid Today's `liquidPurple` (Color(.sRGB, red:0x9b, green:0x7b, blue:0xff)). Used by
@@ -220,7 +219,6 @@ private data class TodayLiveSnapshot(
 @Composable
 fun TodayScreen(
     viewModel: AppViewModel,
-    onSupport: () -> Unit = {},
     onQuickActions: () -> Unit = {},
     updateStore: UpdateStore? = null,
     onOpenUpdates: () -> Unit = {},
@@ -247,14 +245,11 @@ fun TodayScreen(
     // The liquid header battery ring taps through to Devices (iOS parity: the battery ring → router.openDevices()).
     // Defaulted to fall back to Settings so the call site stays compiling; AppRoot binds it to the Devices route.
     onOpenDevices: () -> Unit = onOpenSettings,
-    onOpenWorkouts: () -> Unit = {},
-    onOpenCoach: () -> Unit = {},
 ) {
     val today by viewModel.today.collectAsStateWithLifecycle()
     val alert by viewModel.healthAlert.collectAsStateWithLifecycle()
     val days by viewModel.recentDays.collectAsStateWithLifecycle()
     val live by viewModel.live.collectAsStateWithLifecycle()
-    val strapBattery by viewModel.strapBatteryPct.collectAsStateWithLifecycle()
     // The in-flight manual workout (single source of truth, survives an app kill via rehydration), so the
     // indicator card auto-appears/clears off this alone. Null↔non-null + the start drive the card; the
     // per-second clock ticks inside the card's own LaunchedEffect, never recomposing the Today body.
@@ -483,8 +478,19 @@ fun TodayScreen(
         }.getOrNull()
     }
 
-    // HYDRATION (opt-in, default OFF) — Today card hidden unless enabled in Settings.
-    val hydrationEnabled = remember { NoopPrefs.hydrationTracking(context) }
+    // HYDRATION — the Today "Hydration" card + detail are hidden unless hydration tracking is on.
+    // Default ON in this fork; re-read on resume so toggling in Settings takes effect immediately.
+    var hydrationEnabled by remember { mutableStateOf(NoopPrefs.hydrationTracking(context)) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                hydrationEnabled = NoopPrefs.hydrationTracking(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     var hydrationTotalMl by remember { mutableStateOf(0.0) }
     // #989: `days` only changes on a data refresh, which a hydration write never causes, so the card sat
     // stale after logging a drink until an unrelated sync landed. Keying on the store's mutationSeq too
@@ -950,84 +956,48 @@ fun TodayScreen(
         rowSpacing = 12.dp,
     ) {
         item {
-        // LIQUID Today header replaced by Boop chrome top bar (RedesignTopBar).
-        RedesignTopBar(
-            batteryPct = strapBattery,
-            onOpenSettings = onOpenSettings,
-            onOpenDevices = onOpenDevices,
-        )
+        // LIQUID Today header (iOS LiquidTodayView.scene parity), a full structural rebuild to mirror the
+        // iOS liquid Today element-for-element (NOT the old numeric-date + recording-light + bell header):
+        //   LEFT  — a tappable title block: the big rounded-bold day title ("Today" / "Yesterday" / the
+        //           weekday) over a human date line ("Friday, 3 July"). Tap opens the day picker.
+        //   RIGHT — profile avatar, "+" quick actions, and strap battery ring.
+        // The recording-status light and the notifications BELL are GONE from the header (iOS has neither);
+        // the Updates inbox is relocated into the "+" quick-actions sheet (AppRoot), so the feature stays one
+        // tap away without sitting in the Today header. Staggered in as the first section (index 0).
+        val dayTitle = when (selectedDayOffset) {
+            0 -> "Today"
+            1 -> "Yesterday"
+            else -> {
+                val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
+                keyDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.US))
+            }
+        }
+        // Human date line under the title — "Friday, 3 July" (weekday + day + month), NOT a numeric date.
+        // Dated by the row ACTUALLY on screen (selectedDayKey follows the resolver at offset 0), matching
+        // the iOS `dateLine` (EEEE, d MMMM). Mirrors iOS's date-under-title block.
+        val humanDate = run {
+            val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
+            keyDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.US))
+        }
+        Box(modifier = Modifier.fillMaxWidth().staggeredAppear(0)) {
+            LiquidTodayHeader(
+                dayTitle = dayTitle,
+                humanDate = humanDate,
+                selectedDay = selectedDay,
+                batteryPct = if (liveSnap.connected) liveSnap.batteryPct else null,
+                onPickDay = { offset -> selectedDayOffset = offset },
+                onOpenSettings = onOpenSettings,
+                onOpenDevices = onOpenDevices,
+            )
+        }
         }
 
+        // WORDMARK, a subtle centred "N O O P" on the sky between the header and the hero (iOS LiquidWordmark
+        // parity). White @ ~50% opacity, letter-spaced, perfectly centred; a tap plays a small random wiggle
+        // easter egg. The old Android Today had NO wordmark; this adds it. Staggered in just after the header.
         item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .staggeredAppear(1),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                val dayTitle = when (selectedDayOffset) {
-                    0 -> "Today"
-                    1 -> "Yesterday"
-                    else -> {
-                        val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
-                        keyDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.US))
-                    }
-                }
-                val humanDate = run {
-                    val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
-                    keyDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.US))
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        dayTitle,
-                        style = NoopType.title2.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                        color = Redesign.cream,
-                    )
-                    Text(humanDate, style = NoopType.caption, color = Redesign.muted)
-                }
-                val strain = run {
-                    val live = if (selectedDayOffset == 0) liveTodayStrain else null
-                    val stored = displayMetric?.strain
-                    if (live != null && stored != null) maxOf(live, stored) else (live ?: stored)
-                }
-                RedesignHeroRow(
-                    charge = displayMetric?.recovery ?: lastScoredCharge?.value,
-                    chargeCaption = chargeRecoveryCaption(displayMetric?.recovery ?: lastScoredCharge?.value),
-                    effort = strain,
-                    effortScale = effortScale,
-                    rest = restScoreForDay,
-                    strapBattery = strapBattery,
-                    onChargeTap = { showChargeBreakdown = true },
-                )
-                if (selectedDayOffset == 0) {
-                    RedesignActionRow(
-                        onStart = onOpenWorkouts,
-                        onSecondary = onOpenSleep,
-                        secondaryLabel = "8:30 AM",
-                    )
-                    RedesignSectionHeader(title = "Start a workout")
-                    RedesignChipRow(
-                        chips = listOf(
-                            "Run" to Icons.AutoMirrored.Filled.DirectionsRun,
-                            "Row" to Icons.Filled.Rowing,
-                            "Strength" to Icons.Filled.FitnessCenter,
-                        ),
-                        onChip = { onOpenWorkouts() },
-                    )
-                    RedesignListCard(onClick = onOpenCoach) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Icon(Icons.Filled.Forum, contentDescription = null, tint = Redesign.peach)
-                            Column {
-                                Text("Ask the Coach", style = NoopType.body.copy(fontWeight = FontWeight.Bold), color = Redesign.cream)
-                                Text("Get guidance from your data", style = NoopType.caption, color = Redesign.muted)
-                            }
-                        }
-                    }
-                }
+            Box(modifier = Modifier.fillMaxWidth().staggeredAppear(0)) {
+                LiquidWordmark()
             }
         }
 
@@ -1130,6 +1100,48 @@ fun TodayScreen(
         }
 
         if (alert != null) item { IllnessBanner(alert!!) }
+
+        // HERO, the three Charge / Effort / Rest score rings, Charge centred + enlarged, floating on a
+        // scenic Charge-tinted backdrop (the WHOOP-style hero, #23). The old big gold RecoveryRing hero and
+        // the "At a glance" header are gone: recovery now reads as the enlarged Charge ring, the Support
+        // heart moved to the scaffold's compact top bar, and the Synthesis card + HRV/RHR/Respiratory rows
+        // re-home below. iOS/macOS parity (TodayView.heroSection). The Effort gauge prefers the live
+        // in-progress strain for today, falling back to the stored value (#402).
+        // Staggered in as the rings hero (index 1, after the header). The ring numbers themselves tick up
+        // via GlowRing's built-in count-up (the Android equivalent of iOS GlowRing's animated `value`).
+        // The day-cycle SCENE now sits at SCREEN level (the scaffold's `topBackground`, behind the header +
+        // these rings + bled full-width up behind the status bar), so the rings float DIRECTLY on the scene
+        // rather than in a card-clipped scene of their own, mirroring iOS, where TodayView moved the scene
+        // to a screen-level `SceneScreenBackground` and the hero dropped `.sceneHeroBackground()`. No
+        // in-card scene here, and no rounded clip (a flat hero on the screen-level backdrop). The Charge
+        // ring value reads WHITE (GlowRing's centre label) with a charge-green arc, matching the iOS source.
+        item {
+        // The liquid hero CARD: a translucent near-black that floats over the day-of-sky so the vessels +
+        // white count-up numbers stay crisp — the card does the contrast work, not a muted sky. A rounded
+        // 26 corner + a faint white hairline give it the frosted-glass edge of the iOS liquid heroCard
+        // (heroFill = rgba(13,14,20,.80), stroke white@0.11). Mirrors the iOS LiquidTodayView heroCard.
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
+                .background(liquidHeroFill())
+                .border(1.dp, Palette.hairline, RoundedCornerShape(LIQUID_HERO_RADIUS))
+                .staggeredAppear(1),
+        ) {
+            ScoreHeroRow(
+                day = displayMetric,
+                restScore = restScoreForDay,
+                recoveryCalibration = recoveryCalibration,
+                lastScoredCharge = lastScoredCharge,
+                effortScale = effortScale,
+                liveTodayStrain = if (selectedDayOffset == 0) liveTodayStrain else null,
+                chargeProvenance = chargeProvenance,
+                restProvenance = restProvenance,
+                onScoreInfo = openGuide,
+                onChargeTap = { showChargeBreakdown = true },
+            )
+        }
+        }
 
         // LIVE SESSIONS (beta): the compact "Start session · BETA" entry, directly under the hero. Today
         // only (offset 0 — a session is a now-thing), gated on the Settings beta flag; a RUNNING session
@@ -1361,7 +1373,7 @@ fun TodayScreen(
         item {
             TodaySourcesSection(
                 footer,
-                strapBatteryPct = strapBattery?.roundToInt(),
+                strapBatteryPct = if (liveSnap.connected) liveSnap.batteryPct?.roundToInt() else null,
                 strapBatteryEstimate = if (liveSnap.connected) batteryEstimateText else null,
                 expanded = sourcesExpanded,
                 onToggle = { sourcesExpanded = !sourcesExpanded },
@@ -1814,10 +1826,9 @@ internal fun dayNavSwipeTarget(selectedOffset: Int, dragX: Float, thresholdPx: F
     else -> dayNavNewer(selectedOffset)
 }
 
-// MARK: - Liquid Today header (WHOOP Home parity)
+// MARK: - Liquid Today header (iOS LiquidTodayView.scene parity)
 //
-// LEFT: profile avatar (→ Settings / performance profile). CENTRE: tappable day title + date.
-// RIGHT: quick-action (+) and strap battery ring (→ Devices).
+// LEFT: tappable day title + human date. RIGHT: profile avatar, quick-add (+), battery ring.
 
 @Composable
 private fun LiquidTodayHeader(
@@ -1826,7 +1837,6 @@ private fun LiquidTodayHeader(
     selectedDay: LocalDate,
     batteryPct: Double?,
     onPickDay: (Int) -> Unit,
-    onQuickActions: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenDevices: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1866,23 +1876,7 @@ private fun LiquidTodayHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // LEFT: profile avatar — WHOOP opens performance profile from top-left.
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onOpenSettings,
-                )
-                .semantics { contentDescription = "Profile and settings" },
-            contentAlignment = Alignment.Center,
-        ) {
-            ProfileAvatar(size = 36.dp)
-        }
-
-        // CENTRE: tappable day title + human date.
+        // LEFT: tappable title block — full remaining width, no clip (clip was trimming glyph edges).
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -1918,12 +1912,25 @@ private fun LiquidTodayHeader(
             )
         }
 
-        // RIGHT: quick actions + strap battery.
+        // RIGHT: profile avatar · battery ring.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            QuickActionDisc(onClick = onQuickActions)
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onOpenSettings,
+                    )
+                    .semantics { contentDescription = "Profile and settings" },
+                contentAlignment = Alignment.Center,
+            ) {
+                ProfileAvatar(size = 34.dp)
+            }
             LiquidBatteryRing(batteryPct = batteryPct, onClick = onOpenDevices)
         }
     }
@@ -2995,45 +3002,45 @@ private fun dashboardCardValue(
 private fun DashboardCardRow(
     card: DashboardCard,
     value: String,
-    @Suppress("UNUSED_PARAMETER") fraction: Double?,
+    fraction: Double?,
     tint: Color,
     onClick: (() -> Unit)? = null,
 ) {
     // A real number renders white; a placeholder (No Data, or the Stress calibrating state) renders dimmed.
     val hasValue = value != NO_DATA && value != STRESS_CALIBRATING
-    // Boop card language: solid 16dp raised surface (not liquid vessel chrome).
-    val rowShape = RoundedCornerShape(Metrics.cardRadius)
+    // iOS `cardLink` corner is 20 (a touch rounder than the app-wide 18dp card), with the SAME neutral
+    // surfaceRaised fill + plain hairline the frosted neutral surface already draws.
+    val rowShape = RoundedCornerShape(20.dp)
+    // liquidPress: the tappable card settles inward on press (the iOS LiquidPressStyle feel). The SAME
+    // interactionSource feeds the clickable and the press modifier, so it responds to the actual touch.
+    // It is applied OUTSIDE the frosted surface so the whole card (surface + content) scales/dims as one.
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .let { if (onClick != null) it.liquidPress(interaction) else it }
             .clip(rowShape)
-            .frostedCardSurface(cornerRadius = Metrics.cardRadius)
+            .frostedCardSurface(cornerRadius = 20.dp)
             .let {
                 if (onClick != null) {
                     it.clickable(interactionSource = interaction, indication = null, onClick = onClick)
                 } else it
             }
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            // iOS row padding: 14h / 11v (tighter than the old 13/11 icon-box row).
+            .padding(horizontal = 14.dp, vertical = 11.dp)
             .semantics { contentDescription = "${card.title}: $value" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(tint.copy(alpha = 0.14f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                card.icon,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.size(20.dp),
-            )
-        }
+        // THE fix: a 30dp mini LIQUID VESSEL filled to this card's fraction, tinted its domain colour — the
+        // "small liquid circle per icon" iOS shows and Android was missing (a flat Material-icon square).
+        // Static (animated=false) so the many small gauges cost nothing per frame, matching iOS `cardLink`.
+        LiquidVessel(
+            value = fraction,
+            tint = tint,
+            animated = false,
+            modifier = Modifier.size(30.dp),
+        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(1.dp),
