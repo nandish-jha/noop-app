@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="surface_base">#FF141413</color>
-    <color name="surface_raised">#FF30302E</color>
-    <color name="accent">#FFE88868</color>
-    <color name="text_primary">#FFFAF9F5</color>
-    <color name="black">#FF141413</color>
+    <color name="surface_base">#FF000000</color>
+    <color name="surface_raised">#FF1A1A1A</color>
+    <color name="accent">#FFE0E0E0</color>
+    <color name="text_primary">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
         // Load the Light/Dark/System + chart-colour preferences before first composition so the theme
         // and chart ramps are correct from the very first frame (no flash).
         AppearancePrefs.load(this)
+        PaletteFamilyPrefs.load(this)
         ChartStylePrefs.load(this)
         // Decode the optional on-device profile photo (if set) before first composition so the Today
         // header + Settings avatars show it from the first frame. No-op when no photo is set.
@@ -466,11 +467,10 @@ object NoopPrefs {
      *  readable. Mirrors macOS @AppStorage("noop.showDayCycleBackground"). */
     const val KEY_SHOW_DAY_CYCLE_BACKGROUND = "noop.showDayCycleBackground"
 
-    fun showDayCycleBackground(context: Context): Boolean =
-        of(context).getBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, true)
+    fun showDayCycleBackground(context: Context): Boolean = false
 
     fun setShowDayCycleBackground(context: Context, enabled: Boolean) {
-        of(context).edit().putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, enabled).apply()
+        of(context).edit().putBoolean(KEY_SHOW_DAY_CYCLE_BACKGROUND, false).apply()
     }
 
     /** Coach on-device signals (v5): when ON, the opt-in BYO-key Coach's grounding context may include a

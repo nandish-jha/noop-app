@@ -950,72 +950,57 @@ fun TodayScreen(
         rowSpacing = 12.dp,
     ) {
         item {
-        // LIQUID Today header (iOS LiquidTodayView.scene parity), a full structural rebuild to mirror the
-        // iOS liquid Today element-for-element (NOT the old numeric-date + recording-light + bell header):
-        //   LEFT  — a tappable title block: the big rounded-bold day title ("Today" / "Yesterday" / the
-        //           weekday) over a human date line ("Friday, 3 July"). Tap opens the day picker.
-        //   RIGHT — profile avatar, "+" quick actions, and strap battery ring.
-        // The recording-status light and the notifications BELL are GONE from the header (iOS has neither);
-        // the Updates inbox is relocated into the "+" quick-actions sheet (AppRoot), so the feature stays one
-        // tap away without sitting in the Today header. Staggered in as the first section (index 0).
-        val dayTitle = when (selectedDayOffset) {
-            0 -> "Today"
-            1 -> "Yesterday"
-            else -> {
-                val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
-                keyDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.US))
-            }
-        }
-        // Human date line under the title — "Friday, 3 July" (weekday + day + month), NOT a numeric date.
-        // Dated by the row ACTUALLY on screen (selectedDayKey follows the resolver at offset 0), matching
-        // the iOS `dateLine` (EEEE, d MMMM). Mirrors iOS's date-under-title block.
-        val humanDate = run {
-            val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
-            keyDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.US))
-        }
-        if (selectedDayOffset == 0) {
-            RedesignTopBar(
-                batteryPct = strapBattery,
-                onOpenSettings = onOpenSettings,
-                onOpenDevices = onOpenDevices,
-            )
-        } else {
-            LiquidTodayHeader(
-                dayTitle = dayTitle,
-                humanDate = humanDate,
-                selectedDay = selectedDay,
-                batteryPct = strapBattery,
-                onPickDay = { offset -> selectedDayOffset = offset },
-                onQuickActions = onQuickActions,
-                onOpenSettings = onOpenSettings,
-                onOpenDevices = onOpenDevices,
-            )
-        }
+        // LIQUID Today header replaced by Boop chrome top bar (RedesignTopBar).
+        RedesignTopBar(
+            batteryPct = strapBattery,
+            onOpenSettings = onOpenSettings,
+            onOpenDevices = onOpenDevices,
+        )
         }
 
         item {
-            if (selectedDayOffset == 0) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
-                        .staggeredAppear(1),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    val strain = run {
-                        val live = liveTodayStrain
-                        val stored = displayMetric?.strain
-                        if (live != null && stored != null) maxOf(live, stored) else (live ?: stored)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .staggeredAppear(1),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                val dayTitle = when (selectedDayOffset) {
+                    0 -> "Today"
+                    1 -> "Yesterday"
+                    else -> {
+                        val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
+                        keyDate.format(DateTimeFormatter.ofPattern("EEEE", Locale.US))
                     }
-                    RedesignHeroRow(
-                        charge = displayMetric?.recovery ?: lastScoredCharge?.value,
-                        chargeCaption = chargeRecoveryCaption(displayMetric?.recovery ?: lastScoredCharge?.value),
-                        effort = strain,
-                        effortScale = effortScale,
-                        rest = restScoreForDay,
-                        strapBattery = strapBattery,
-                        onChargeTap = { showChargeBreakdown = true },
+                }
+                val humanDate = run {
+                    val keyDate = runCatching { LocalDate.parse(selectedDayKey) }.getOrNull() ?: selectedDay
+                    keyDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.US))
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        dayTitle,
+                        style = NoopType.title2.copy(fontSize = 22.sp, fontWeight = FontWeight.Bold),
+                        color = Redesign.cream,
                     )
+                    Text(humanDate, style = NoopType.caption, color = Redesign.muted)
+                }
+                val strain = run {
+                    val live = if (selectedDayOffset == 0) liveTodayStrain else null
+                    val stored = displayMetric?.strain
+                    if (live != null && stored != null) maxOf(live, stored) else (live ?: stored)
+                }
+                RedesignHeroRow(
+                    charge = displayMetric?.recovery ?: lastScoredCharge?.value,
+                    chargeCaption = chargeRecoveryCaption(displayMetric?.recovery ?: lastScoredCharge?.value),
+                    effort = strain,
+                    effortScale = effortScale,
+                    rest = restScoreForDay,
+                    strapBattery = strapBattery,
+                    onChargeTap = { showChargeBreakdown = true },
+                )
+                if (selectedDayOffset == 0) {
                     RedesignActionRow(
                         onStart = onOpenWorkouts,
                         onSecondary = onOpenSleep,
@@ -1042,28 +1027,6 @@ fun TodayScreen(
                             }
                         }
                     }
-                }
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                        .background(LIQUID_HERO_FILL)
-                        .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(LIQUID_HERO_RADIUS))
-                        .staggeredAppear(1),
-                ) {
-                    ScoreHeroRow(
-                        day = displayMetric,
-                        restScore = restScoreForDay,
-                        recoveryCalibration = recoveryCalibration,
-                        lastScoredCharge = lastScoredCharge,
-                        effortScale = effortScale,
-                        liveTodayStrain = null,
-                        chargeProvenance = chargeProvenance,
-                        restProvenance = restProvenance,
-                        onScoreInfo = openGuide,
-                        onChargeTap = { showChargeBreakdown = true },
-                    )
                 }
             }
         }
@@ -3032,45 +2995,45 @@ private fun dashboardCardValue(
 private fun DashboardCardRow(
     card: DashboardCard,
     value: String,
-    fraction: Double?,
+    @Suppress("UNUSED_PARAMETER") fraction: Double?,
     tint: Color,
     onClick: (() -> Unit)? = null,
 ) {
     // A real number renders white; a placeholder (No Data, or the Stress calibrating state) renders dimmed.
     val hasValue = value != NO_DATA && value != STRESS_CALIBRATING
-    // iOS `cardLink` corner is 20 (a touch rounder than the app-wide 18dp card), with the SAME neutral
-    // surfaceRaised fill + plain hairline the frosted neutral surface already draws.
-    val rowShape = RoundedCornerShape(20.dp)
-    // liquidPress: the tappable card settles inward on press (the iOS LiquidPressStyle feel). The SAME
-    // interactionSource feeds the clickable and the press modifier, so it responds to the actual touch.
-    // It is applied OUTSIDE the frosted surface so the whole card (surface + content) scales/dims as one.
+    // Boop card language: solid 16dp raised surface (not liquid vessel chrome).
+    val rowShape = RoundedCornerShape(Metrics.cardRadius)
     val interaction = remember { MutableInteractionSource() }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .let { if (onClick != null) it.liquidPress(interaction) else it }
             .clip(rowShape)
-            .frostedCardSurface(cornerRadius = 20.dp)
+            .frostedCardSurface(cornerRadius = Metrics.cardRadius)
             .let {
                 if (onClick != null) {
                     it.clickable(interactionSource = interaction, indication = null, onClick = onClick)
                 } else it
             }
-            // iOS row padding: 14h / 11v (tighter than the old 13/11 icon-box row).
-            .padding(horizontal = 14.dp, vertical = 11.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp)
             .semantics { contentDescription = "${card.title}: $value" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // THE fix: a 30dp mini LIQUID VESSEL filled to this card's fraction, tinted its domain colour — the
-        // "small liquid circle per icon" iOS shows and Android was missing (a flat Material-icon square).
-        // Static (animated=false) so the many small gauges cost nothing per frame, matching iOS `cardLink`.
-        LiquidVessel(
-            value = fraction,
-            tint = tint,
-            animated = false,
-            modifier = Modifier.size(30.dp),
-        )
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(tint.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                card.icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(1.dp),

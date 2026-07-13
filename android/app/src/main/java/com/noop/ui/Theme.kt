@@ -532,8 +532,10 @@ fun NoopTheme(content: @Composable () -> Unit) {
         AppearanceMode.DARK -> true
         AppearanceMode.SYSTEM -> isSystemInDarkTheme()
     }
-    val tokens = if (dark) DarkTokens else LightTokens
-    if (Palette.active !== tokens) Palette.active = tokens
+    // Read family so scheme switches recompose NoopTheme and restyle the whole tree.
+    val family = PaletteFamilyPrefs.family
+    val tokens = resolveBoopTokens(family, dark)
+    if (Palette.active != tokens) Palette.active = tokens
 
     // Status-/nav-bar icon appearance: light icons on the dark theme, dark icons on the warm-paper
     // light theme (otherwise the icons are invisible). Edge-to-edge keeps the bars transparent.

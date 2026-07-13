@@ -28,13 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -44,36 +42,36 @@ import androidx.compose.ui.unit.sp
 import java.util.Locale
 import kotlin.math.roundToInt
 
-// MARK: - NOOP redesign tokens (from Noop Redesign - Standalone.html)
+// MARK: - Boop chrome tokens
 //
-// Warm terracotta canvas, coral Charge accent, Manrope/Outfit-inspired typography weights.
+// Resolved from the active Palette family (AMOLED / Terracotta / Rose / …) so dock,
+// hero, and cards stay locked to Boop's design schemes.
 
 object Redesign {
-    // Aligned with Boop terracotta dark (`boopTerracottaDarkPalette`).
-    val canvas = Color(0xFF141413)
-    val canvasDeep = Color(0xFF141413)
-    val phone = Color(0xFF1A1918)
-    val card = Color(0xFF30302E)
-    val cardAlt = Color(0xFF252320)
-    val cream = Color(0xFFFAF9F5)
-    val peach = Color(0xFFE8A898)
-    val coral = Color(0xFFE88868)
-    val coralActive = Color(0xFFE88868)
-    val amber = Color(0xFFD46E48)
-    val effort = Color(0xFFE8A898)
-    val effortBg = Color(0x28E8A898)
-    val rest = Color(0xFFC77E92)
-    val restBg = Color(0x29C77E92)
-    val strapBg = Color(0x14FAF9F5)
-    val ringTrack = Color(0xFF3D3D3A)
-    val positive = Color(0xFFB7D18A)
-    val positiveBg = Color(0x299CB86B)
-    val headerGradientTop = Color(0xFF252320)
-    val navBar = Color(0xD91A1918)
-    val navBorder = Color(0x24E8A898)
-    val muted = Color(0xFFB0AEA5)
-    val navUnselected = Color(0xFF8A8480)
-    val heroRadius = 28.dp
+    val canvas get() = Palette.surfaceBase
+    val canvasDeep get() = Palette.surfaceBase
+    val phone get() = Palette.scenicCenter
+    val card get() = Palette.surfaceRaised
+    val cardAlt get() = Palette.surfaceInset
+    val cream get() = Palette.textPrimary
+    val peach get() = Palette.accentHover
+    val coral get() = Palette.accent
+    val coralActive get() = Palette.accentHover
+    val amber get() = Palette.goldDeep
+    val effort get() = Palette.effortColor
+    val effortBg get() = Palette.surfaceRaised
+    val rest get() = Palette.restColor
+    val restBg get() = Palette.surfaceRaised
+    val strapBg get() = Palette.surfaceRaised
+    val ringTrack get() = Palette.surfaceOverlay
+    val positive get() = Palette.statusPositive
+    val positiveBg get() = Palette.surfaceRaised
+    val headerGradientTop get() = Palette.surfaceBase
+    val navBar get() = Palette.surfaceBase.copy(alpha = 0.85f)
+    val navBorder get() = Palette.hairline
+    val muted get() = Palette.textSecondary
+    val navUnselected get() = Palette.textTertiary
+    val heroRadius = 16.dp
     val cardRadius = 16.dp
     val pillRadius = 100.dp
     val dockRadius = 22.dp
@@ -89,11 +87,7 @@ fun RedesignTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Redesign.headerGradientTop, Redesign.phone),
-                ),
-            )
+            .background(Redesign.phone)
             .padding(top = 58.dp, start = 20.dp, end = 20.dp, bottom = 18.dp),
     ) {
         Row(
@@ -118,7 +112,7 @@ fun RedesignTopBar(
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(Redesign.amber)
+                    .background(Redesign.card)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -260,17 +254,15 @@ fun RedesignHeroRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            RedesignSideStat(label = "Effort", value = effortLabel, bg = Redesign.effortBg, accent = Redesign.effort)
+            RedesignSideStat(label = "Effort", value = effortLabel, accent = Redesign.effort)
             RedesignSideStat(
                 label = "Rest",
                 value = rest?.roundToInt()?.toString() ?: "—",
-                bg = Redesign.restBg,
                 accent = Redesign.rest,
             )
             RedesignSideStat(
                 label = "Strap",
                 value = strapBattery?.roundToInt()?.let { "$it%" } ?: "—",
-                bg = Redesign.strapBg,
                 accent = Redesign.muted,
             )
         }
@@ -301,13 +293,13 @@ private fun RedesignCoralRing(fraction: Float, size: Dp) {
 }
 
 @Composable
-private fun RedesignSideStat(label: String, value: String, bg: Color, accent: Color) {
+private fun RedesignSideStat(label: String, value: String, accent: Color) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 72.dp)
             .clip(RoundedCornerShape(Redesign.cardRadius))
-            .background(bg)
+            .background(Redesign.card)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.Center,
     ) {
@@ -345,8 +337,8 @@ fun RedesignActionRow(
             contentAlignment = Alignment.Center,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Redesign.canvas, modifier = Modifier.size(18.dp))
-                Text("Start", style = NoopType.body.copy(fontWeight = FontWeight.Bold), color = Redesign.canvas)
+                Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Palette.goldDeepText, modifier = Modifier.size(18.dp))
+                Text("Start", style = NoopType.body.copy(fontWeight = FontWeight.Bold), color = Palette.goldDeepText)
             }
         }
         Box(

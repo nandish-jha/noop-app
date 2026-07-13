@@ -12,11 +12,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -451,6 +454,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
 
     // Theme (System / Light / Dark) — drives NoopTheme; AppearancePrefs mirrors it in snapshot state.
     var themeMode by remember { mutableStateOf(AppearancePrefs.mode) }
+    var paletteFamily by remember { mutableStateOf(PaletteFamilyPrefs.family) }
 
     // SAF launchers — CreateDocument for export, OpenDocument for import.
     val exportLauncher = rememberLauncherForActivityResult(
@@ -868,7 +872,7 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
         SettingsSection(
             icon = Icons.Filled.Brightness6,
             title = "Appearance",
-            blurb = "Choose Light, Dark, or follow your system. Dark uses an AMOLED black canvas with classic chart colours.",
+            blurb = "Match Boop’s theme modes and color palettes. Charts stay Classic.",
         ) {
             FormRow(label = "Theme") {
                 SegmentedPillControl(
@@ -880,6 +884,62 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                         AppearancePrefs.set(context, mode)
                     },
                 )
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("Color palette", style = NoopType.subhead, color = Palette.textSecondary)
+            Spacer(Modifier.height(8.dp))
+            val darkPreview = when (themeMode) {
+                AppearanceMode.DARK -> true
+                AppearanceMode.LIGHT -> false
+                AppearanceMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PaletteFamily.entries.chunked(2).forEach { row ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        row.forEach { family ->
+                            val selected = paletteFamily == family
+                            val swatch = paletteFamilyPreview(family, darkPreview)
+                            Surface(
+                                onClick = {
+                                    paletteFamily = family
+                                    PaletteFamilyPrefs.set(context, family)
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                color = Palette.surfaceRaised,
+                                border = BorderStroke(
+                                    width = if (selected) 2.dp else 1.dp,
+                                    color = if (selected) Palette.accent else Palette.hairline,
+                                ),
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Column(
+                                    Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        swatch.forEach { c ->
+                                            Box(
+                                                Modifier
+                                                    .size(18.dp)
+                                                    .clip(CircleShape)
+                                                    .background(c),
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        family.label,
+                                        color = Palette.textPrimary,
+                                        style = NoopType.subhead.copy(fontWeight = FontWeight.SemiBold),
+                                    )
+                                }
+                            }
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
             }
         }
 
