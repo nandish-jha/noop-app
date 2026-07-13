@@ -14,6 +14,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -296,10 +300,29 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                 )
             },
         ) { inner ->
+            val rootSwipeThreshold = with(LocalDensity.current) { 96.dp.toPx() }
+            val rootSwipeModifier = if (current in rootPagerTabs) {
+                Modifier.pointerInput(current) {
+                    var acc = 0f
+                    detectHorizontalDragGestures(
+                        onDragStart = { acc = 0f },
+                        onHorizontalDrag = { _, dx -> acc += dx },
+                        onDragEnd = {
+                            val i = rootPagerTabs.indexOf(current)
+                            when {
+                                acc < -rootSwipeThreshold && i in 0 until rootPagerTabs.lastIndex ->
+                                    nav.navigateTopLevel(rootPagerTabs[i + 1].route)
+                                acc > rootSwipeThreshold && i > 0 ->
+                                    nav.navigateTopLevel(rootPagerTabs[i - 1].route)
+                            }
+                        },
+                    )
+                }
+            } else Modifier
             NavHost(
                 navController = nav,
                 startDestination = Destination.Today.route,
-                modifier = Modifier.padding(inner),
+                modifier = Modifier.padding(inner).then(rootSwipeModifier),
                 // README motion: top-level destinations crossfade (~240ms) on the calm,
                 // decelerating global easing — nothing slides or bounces between tabs. The
                 // same fade is used for back (pop) so the bar never feels jerky. Drill-ins
@@ -680,12 +703,19 @@ private fun MoreRow(dest: Destination, onClick: () -> Unit) {
 /** A single bottom-bar nav slot: the destination it switches to, plus the bar-specific icon/label. */
 private data class BarTab(val dest: Destination, val icon: ImageVector, @StringRes val labelRes: Int)
 
+private val rootPagerTabs = listOf(
+    Destination.Today,
+    Destination.Sleep,
+    Destination.Trends,
+    Destination.More,
+)
+
 private val barLeadingTabs = listOf(
     BarTab(Destination.Today, Icons.Outlined.GridView, R.string.nav_today),
-    BarTab(Destination.Trends, Icons.AutoMirrored.Filled.TrendingUp, R.string.nav_trends),
+    BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
 )
 private val barTrailingTabs = listOf(
-    BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
+    BarTab(Destination.Trends, Icons.AutoMirrored.Filled.TrendingUp, R.string.nav_trends),
 )
 
 @Composable
@@ -694,9 +724,9 @@ private fun GlassBottomBar(
     onTabSelected: (Destination) -> Unit,
     onQuickActions: () -> Unit,
 ) {
-    // Boop UnifiedBottomNav chrome on the classic destination set (Today · Trends · Sleep · More).
-    val moreActive = current != Destination.Today && current != Destination.Trends &&
-        current != Destination.Sleep
+    // Boop UnifiedBottomNav: Today · Sleep · + · Trends · More
+    val moreActive = current != Destination.Today && current != Destination.Sleep &&
+        current != Destination.Trends
 
     Box(
         modifier = Modifier

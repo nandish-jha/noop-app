@@ -23,10 +23,12 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.noop.R
 
 // MARK: - Palette — the "Titanium & Gold" re-skin (mirrors StrandDesign/Palette.swift)
 //
@@ -407,51 +409,54 @@ object Metrics {
     val progressHeight = 10.dp
 }
 
-// MARK: - Typography (ported from StrandDesign/Typography.swift §9.2)
+// MARK: - Typography (Boop match: Inter + Source Serif 4)
 //
-// Helvetica Neue on Apple; on Android we use a Helvetica-Neue FontFamily where one
-// is bundled in res/font, else FontFamily.SansSerif as the documented substitute
-// (no Helvetica asset is bundled, so the platform grotesque stands in) with the same
-// sizes/weights. Numeric/live styles stay in the house sans and request TABULAR
-// figures via fontFeatureSettings = "tnum" (mirroring iOS .monospacedDigit()) so live
-// values don't reflow; Monospace is reserved for the `mono` raw/log style only.
+// Boop uses Inter for body/UI and Source Serif 4 for titles. Numeric styles stay
+// tabular via fontFeatureSettings = "tnum".
 
 object NoopType {
-    // Helvetica Neue family — falls back to the platform grotesque (SansSerif) when
-    // no res/font/helvetica_neue asset is bundled, per the v3 type spec.
-    private val sans = FontFamily.SansSerif
+    private val sans = FontFamily(
+        Font(R.font.inter_regular, FontWeight.Normal),
+        Font(R.font.inter_medium, FontWeight.Medium),
+        Font(R.font.inter_semibold, FontWeight.SemiBold),
+        Font(R.font.inter_bold, FontWeight.Bold),
+    )
+    private val serif = FontFamily(
+        Font(R.font.source_serif_4, FontWeight.Normal),
+        Font(R.font.source_serif_4_medium, FontWeight.Medium),
+        Font(R.font.source_serif_4_semibold, FontWeight.SemiBold),
+    )
     private val monoFamily = FontFamily.Monospace
 
-    /** Display 64–80 / Bold — the recovery ring number. Tight tracking (≈ -0.04em),
-     *  tabular figures so a changing value never reflows. Mirrors StrandFont.display. */
+    /** Display 64–80 / Bold — big score numbers. */
     fun display(size: Float = 72f) = TextStyle(
         fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = size.sp,
         letterSpacing = displayTracking(size).sp, fontFeatureSettings = "tnum",
     )
 
-    /** The tight tracking for big display numbers (≈ -0.04em). Already applied inside
-     *  display(); exposed to mirror StrandFont.displayTracking. */
     fun displayTracking(size: Float = 72f): Float = -size * 0.04f
 
-    val title1 = TextStyle(fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 28.sp)
-    val title2 = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
+    /** Boop page title (Source Serif 4 SemiBold ~27sp). */
+    val pageTitle = TextStyle(
+        fontFamily = serif, fontWeight = FontWeight.SemiBold, fontSize = 27.sp,
+        letterSpacing = (-0.2).sp,
+    )
+
+    val title1 = TextStyle(fontFamily = serif, fontWeight = FontWeight.SemiBold, fontSize = 28.sp)
+    val title2 = TextStyle(fontFamily = serif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
     val headline = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
     val body = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 15.sp)
     val subhead = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 13.sp)
-    val caption = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 12.sp)
+    val caption = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 12.5.sp)
     val footnote = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 11.sp)
 
-    /** Overline 11 / Bold, +1.4 tracking, ALL-CAPS at use site. */
     val overline = TextStyle(
         fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 11.sp,
         letterSpacing = 1.4.sp,
     )
 
-    /** Mono 13 — raw / log views. */
     val mono = TextStyle(fontFamily = monoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp)
 
-    /** A numeric style at an arbitrary size — the house sans with TABULAR figures
-     *  ('tnum') so live values don't reflow. Mirrors StrandFont.number. */
     fun number(size: Float, weight: FontWeight = FontWeight.SemiBold) = TextStyle(
         fontFamily = sans, fontWeight = weight, fontSize = size.sp, fontFeatureSettings = "tnum",
     )

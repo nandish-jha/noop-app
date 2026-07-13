@@ -1,6 +1,7 @@
 package com.noop.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -930,20 +931,8 @@ fun TodayScreen(
     // resolve the day ONCE on lift via the pure `dayNavSwipeTarget` (rightward = older, leftward = newer,
     // clamped at today). The threshold is density-scaled from DAY_NAV_SWIPE_THRESHOLD_DP so a small wobble
     // during a scroll doesn't flip the day. Mirrors the iOS day-nav swipe lane.
-    val swipeThresholdPx = with(LocalDensity.current) { DAY_NAV_SWIPE_THRESHOLD_DP.dp.toPx() }
-    val daySwipeModifier = Modifier.pointerInput(Unit) {
-        var accumulatedX = 0f
-        detectHorizontalDragGestures(
-            onDragStart = { accumulatedX = 0f },
-            onDragEnd = {
-                selectedDayOffset = dayNavSwipeTarget(selectedDayOffset, accumulatedX, swipeThresholdPx)
-            },
-            onHorizontalDrag = { _, dragAmount -> accumulatedX += dragAmount },
-        )
-    }
-
+    // Day changes via the header date picker; horizontal swipe is reserved for Boop-style root-tab paging.
     LazyScreenScaffold(
-        modifier = daySwipeModifier,
         // title = null suppresses the big scaffold header (the nullable-title path); the compact
         // WHOOP-style top bar below replaces it, mirroring the iOS Today screen (todayTopBar).
         title = null,
@@ -990,15 +979,6 @@ fun TodayScreen(
                 onOpenDevices = onOpenDevices,
             )
         }
-        }
-
-        // WORDMARK, a subtle centred "N O O P" on the sky between the header and the hero (iOS LiquidWordmark
-        // parity). White @ ~50% opacity, letter-spaced, perfectly centred; a tap plays a small random wiggle
-        // easter egg. The old Android Today had NO wordmark; this adds it. Staggered in just after the header.
-        item {
-            Box(modifier = Modifier.fillMaxWidth().staggeredAppear(0)) {
-                LiquidWordmark()
-            }
         }
 
         // A "workout in progress" indicator whenever a manual workout is active (iOS parity: the Today
@@ -1871,67 +1851,78 @@ private fun LiquidTodayHeader(
         }
     }
 
-    Row(
+    // Boop PageHeaderTile: 22dp pill surface with serif title.
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        shape = RoundedCornerShape(22.dp),
+        color = Palette.surfaceInset,
+        border = BorderStroke(1.dp, Palette.accentHover.copy(alpha = 0.14f)),
+        shadowElevation = 0.dp,
     ) {
-        // LEFT: tappable title block — full remaining width, no clip (clip was trimming glyph edges).
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 44.dp)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClickLabel = "Change day",
-                    onClick = { showPicker = true },
-                )
-                .semantics { contentDescription = "$dayTitle, $humanDate. Tap to pick a day, swipe to change day." },
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                dayTitle,
-                style = NoopType.number(28f, weight = FontWeight.Bold).copy(
-                    lineHeight = 34.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                ),
-                color = Palette.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                humanDate,
-                style = NoopType.caption.copy(
-                    lineHeight = 17.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                ),
-                color = Palette.textSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        // RIGHT: profile avatar · battery ring.
         Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
+            Column(
                 modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
+                    .weight(1f)
+                    .heightIn(min = 44.dp)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onOpenSettings,
+                        onClickLabel = "Change day",
+                        onClick = { showPicker = true },
                     )
-                    .semantics { contentDescription = "Profile and settings" },
-                contentAlignment = Alignment.Center,
+                    .semantics { contentDescription = "$dayTitle, $humanDate. Tap to pick a day." },
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                ProfileAvatar(size = 34.dp)
+                Text(
+                    dayTitle,
+                    style = NoopType.pageTitle.copy(
+                        lineHeight = 32.sp,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    ),
+                    color = Palette.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    humanDate,
+                    style = NoopType.caption.copy(
+                        lineHeight = 17.sp,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    ),
+                    color = Palette.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
-            LiquidBatteryRing(batteryPct = batteryPct, onClick = onOpenDevices)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(Palette.glowAmbient)
+                        .border(1.dp, Palette.hairline, CircleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onOpenSettings,
+                        )
+                        .semantics { contentDescription = "Profile and settings" },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    ProfileAvatar(size = 30.dp)
+                }
+                LiquidBatteryRing(batteryPct = batteryPct, onClick = onOpenDevices)
+            }
         }
     }
 }
@@ -1948,9 +1939,8 @@ private fun LiquidBatteryRing(batteryPct: Double?, onClick: () -> Unit) {
             .size(34.dp)
             .liquidPress(interaction)
             .clip(CircleShape)
-            // A translucent near-black disc + faint white rim, matching iOS (rgba(10,11,16,.5) + white@.15).
-            .background(Color(red = 10f / 255f, green = 11f / 255f, blue = 16f / 255f, alpha = 0.5f))
-            .border(1.dp, Color.White.copy(alpha = 0.15f), CircleShape)
+            .background(Palette.glowAmbient)
+            .border(1.dp, Palette.hairline, CircleShape)
             .clickable(
                 interactionSource = interaction,
                 indication = null,
@@ -2380,23 +2370,20 @@ private fun HeroScoreVessel(
     showsValue: Boolean = true,
     format: (Double) -> String = { it.roundToInt().toString() },
 ) {
+    // Flat Boop ring + centre number (no liquid fill, no gloss/shadow on the figure).
     Box(modifier = modifier.size(diameter), contentAlignment = Alignment.Center) {
-        LiquidVessel(
-            value = fraction.coerceIn(0.0, 1.0),
+        StatRing(
+            fraction = fraction.coerceIn(0.0, 1.0),
             tint = tint,
-            animated = animated,
-            modifier = Modifier.size(diameter),
+            diameter = diameter,
         )
         if (showsValue) {
-            // Count-up number over the vessel — white, tabular, a soft shadow for legibility, hit-transparent
-            // so the tap reaches the vessel (splash). Size ≈ diameter × 0.27 (iOS 96→26 ratio), capped.
             val numberSp = (diameter.value * 0.27f).coerceIn(20f, 30f)
             CountUpText(
                 value = value,
                 format = format,
-                style = NoopType.number(numberSp, weight = FontWeight.Bold)
-                    .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-                color = Color.White,
+                style = NoopType.number(numberSp, weight = FontWeight.Bold),
+                color = Palette.textPrimary,
                 modifier = Modifier.clearAndSetSemantics {},
             )
         }
@@ -2690,11 +2677,10 @@ private fun HeroVitalRow(label: String, value: String, tint: Color, fraction: Do
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Metrics.space12),
     ) {
-        LiquidVessel(
-            value = fraction,
+        StatRing(
+            fraction = fraction,
             tint = tint,
-            animated = false,
-            modifier = Modifier.size(26.dp),
+            diameter = 26.dp,
         )
         Text(label, style = NoopType.subhead, color = Palette.textSecondary, modifier = Modifier.weight(1f))
         Text(
@@ -3035,11 +3021,10 @@ private fun DashboardCardRow(
         // THE fix: a 30dp mini LIQUID VESSEL filled to this card's fraction, tinted its domain colour — the
         // "small liquid circle per icon" iOS shows and Android was missing (a flat Material-icon square).
         // Static (animated=false) so the many small gauges cost nothing per frame, matching iOS `cardLink`.
-        LiquidVessel(
-            value = fraction,
+        StatRing(
+            fraction = fraction,
             tint = tint,
-            animated = false,
-            modifier = Modifier.size(30.dp),
+            diameter = 30.dp,
         )
         Column(
             modifier = Modifier.weight(1f),

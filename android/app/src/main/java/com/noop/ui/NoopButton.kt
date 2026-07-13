@@ -82,12 +82,13 @@ private object NoopButtonMetrics {
 
 // MARK: - Design-reset accent (WHOOP blue) — pinned to the iOS values, never gold
 
-/** The reset accent blue (iOS `StrandPalette.accent`: #234F9E light / #60A0E0 dark). */
-private val noopAccentBlue: Color
-    @Composable get() = if (Palette.isLight) Color(0xFF234F9E) else Color(0xFF60A0E0)
+/** The reset accent follows the active Boop palette family. */
+private val noopAccent: Color
+    @Composable get() = Palette.accent
 
-/** Crisp white label/icon on accent + critical fills (iOS `goldDeepText` = #FFFFFF post-reset). */
-private val noopOnFill: Color = Color(0xFFFFFFFF)
+/** Crisp label/icon on accent fills (Boop accentOn). */
+private val noopOnFill: Color
+    @Composable get() = Palette.goldDeepText
 
 /** Resolves a [NoopButtonKind] to its concrete fill / label / border tokens. */
 private data class NoopButtonAppearance(
@@ -99,16 +100,16 @@ private data class NoopButtonAppearance(
 @Composable
 private fun appearanceFor(kind: NoopButtonKind): NoopButtonAppearance = when (kind) {
     NoopButtonKind.Primary -> NoopButtonAppearance(
-        fill = noopAccentBlue, label = noopOnFill, border = null,
+        fill = noopAccent, label = noopOnFill, border = null,
     )
     NoopButtonKind.Secondary -> NoopButtonAppearance(
         fill = Palette.surfaceRaised, label = Palette.textPrimary, border = Palette.hairline,
     )
     NoopButtonKind.Tertiary -> NoopButtonAppearance(
-        fill = null, label = noopAccentBlue, border = null,
+        fill = null, label = noopAccent, border = null,
     )
     NoopButtonKind.Destructive -> NoopButtonAppearance(
-        fill = Palette.statusCritical, label = noopOnFill, border = null,
+        fill = Palette.statusCritical, label = Color.White, border = null,
     )
 }
 
