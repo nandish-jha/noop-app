@@ -1,9 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Monochrome (themed-icon) layer: the NOOP ring + core as a single-colour silhouette. -->
+<!-- Monochrome: angular N for themed icons (distinct from Boop peacock) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108"
-    android:tint="#FFFFFF">
-    <path android:strokeWidth="9" android:strokeLineCap="round" android:strokeColor="#FFFFFF" android:fillColor="#00000000"
-        android:pathData="M76.1,69.5 A27,27 0 1 1 76.1,38.5"/>
-    <path android:fillColor="#FFFFFF" android:pathData="M54,46.5 a7.5,7.5 0 1 0 0,15 a7.5,7.5 0 1 0 0,-15 z"/>
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,54 m-24,0 a24,24 0 1,1 48,0 a24,24 0 1,1 -48,0"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M40,70 L40,38 L68,70 L68,38"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="4"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
 </vector>

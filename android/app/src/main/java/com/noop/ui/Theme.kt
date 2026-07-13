@@ -369,7 +369,7 @@ object Metrics {
     val space16 = 16.dp
     val space18 = 18.dp
     val space24 = 24.dp
-    val cardRadius = 20.dp
+    val cardRadius = 16.dp   // Boop card radius
     val cornerXs = 2.dp
     val cornerSm = 12.dp
     val cornerBadge = 6.dp

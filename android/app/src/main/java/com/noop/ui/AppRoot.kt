@@ -302,6 +302,7 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
                         if (dest.route != currentRoute) nav.navigateTopLevel(dest.route)
                     },
                     onOpenMore = { nav.navigateTopLevel(Destination.More.route) },
+                    onQuickActions = { showQuickActions = true },
                 )
             },
         ) { inner ->
@@ -687,16 +688,19 @@ private fun MoreRow(dest: Destination, onClick: () -> Unit) {
     }
 }
 
-// MARK: - Redesign bottom navigation (Noop Redesign - Standalone.html)
+// MARK: - Boop-style floating dock
 //
-// Today · Workouts · Sleep · Health — frosted bar, coral active tint.
+// Mirrors boop-app UnifiedBottomNav: floating pill (22dp), tabs Today · Workouts | + | Sleep · Health,
+// cream FAB with coral border, terracotta accent on selected icons.
 
 /** A single bottom-bar nav slot: the destination it switches to, plus the bar-specific icon/label. */
 private data class BarTab(val dest: Destination, val icon: ImageVector, @StringRes val labelRes: Int)
 
-private val redesignBarTabs = listOf(
+private val redesignLeadingTabs = listOf(
     BarTab(Destination.Today, Icons.Filled.WbSunny, R.string.nav_today),
     BarTab(Destination.Workouts, Icons.Filled.FitnessCenter, R.string.nav_workouts),
+)
+private val redesignTrailingTabs = listOf(
     BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
     BarTab(Destination.Health, Icons.Filled.Favorite, R.string.nav_health),
 )
@@ -706,60 +710,147 @@ private fun RedesignBottomBar(
     current: Destination,
     onTabSelected: (Destination) -> Unit,
     onOpenMore: () -> Unit,
+    onQuickActions: () -> Unit,
 ) {
-    val tabDestinations = redesignBarTabs.map { it.dest }.toSet()
+    val allTabs = redesignLeadingTabs + redesignTrailingTabs
+    val tabDestinations = allTabs.map { it.dest }.toSet()
     val overflowActive = current !in tabDestinations
 
-    Surface(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding(),
-        color = Redesign.navBar,
-        shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, Redesign.navBorder),
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 8.dp, end = 8.dp, top = 10.dp, bottom = 26.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically,
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(Redesign.dockRadius),
+            color = Redesign.navBar,
+            border = BorderStroke(1.dp, Redesign.peach.copy(alpha = 0.14f)),
+            shadowElevation = 6.dp,
         ) {
-            redesignBarTabs.forEach { tab ->
-                val label = stringResource(tab.labelRes)
-                val selected = when (tab.dest) {
-                    Destination.Today -> current == Destination.Today
-                    Destination.Workouts -> current == Destination.Workouts || current == Destination.Trends
-                    Destination.Sleep -> current == Destination.Sleep
-                    Destination.Health -> current == Destination.Health || overflowActive
-                    else -> false
-                }
-                val tint = if (selected) Redesign.coralActive else Color(0x59F3ECE4)
-                Column(
-                    modifier = Modifier
-                        .width(70.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                if (tab.dest == Destination.Health && overflowActive && current != Destination.Health) {
-                                    onOpenMore()
-                                } else {
-                                    onTabSelected(tab.dest)
-                                }
-                            },
-                        )
-                        .semantics { contentDescription = label },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Icon(tab.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-                    Text(
-                        label,
-                        style = NoopType.caption.copy(fontSize = 11.sp, fontWeight = FontWeight.Bold),
-                        color = tint,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                redesignLeadingTabs.forEach { tab ->
+                    BoopDockTab(
+                        tab = tab,
+                        selected = current == tab.dest ||
+                            (tab.dest == Destination.Workouts && current == Destination.Trends),
+                        modifier = Modifier.weight(1f),
+                        onClick = { onTabSelected(tab.dest) },
                     )
                 }
+                BoopDockAddButton(onClick = onQuickActions)
+                redesignTrailingTabs.forEach { tab ->
+                    val selected = when (tab.dest) {
+                        Destination.Sleep -> current == Destination.Sleep
+                        Destination.Health -> current == Destination.Health || overflowActive
+                        else -> current == tab.dest
+                    }
+                    BoopDockTab(
+                        tab = tab,
+                        selected = selected,
+                        modifier = Modifier.weight(1f),
+                        onClick = {
+                            if (tab.dest == Destination.Health && overflowActive && current != Destination.Health) {
+                                onOpenMore()
+                            } else {
+                                onTabSelected(tab.dest)
+                            }
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BoopDockTab(
+    tab: BarTab,
+    selected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val label = stringResource(tab.labelRes)
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1.15f else 1f,
+        animationSpec = spring(stiffness = 420f, dampingRatio = 0.72f),
+        label = "boopDockIconScale",
+    )
+    val tint = if (selected) Redesign.coral else Redesign.navUnselected.copy(alpha = 0.55f)
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick,
+            )
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            tab.icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier
+                .size(27.dp)
+                .graphicsLayer {
+                    scaleX = iconScale
+                    scaleY = iconScale
+                },
+        )
+    }
+}
+
+@Composable
+private fun BoopDockAddButton(onClick: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.88f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "boopDockAddScale",
+    )
+    val rotation by animateFloatAsState(
+        targetValue = if (pressed) 45f else 0f,
+        animationSpec = spring(stiffness = 380f, dampingRatio = 0.7f),
+        label = "boopDockAddRotation",
+    )
+    Box(
+        modifier = Modifier.padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            onClick = onClick,
+            shape = RoundedCornerShape(16.dp),
+            color = Redesign.cream,
+            border = BorderStroke(1.5.dp, Redesign.coral.copy(alpha = 0.55f)),
+            shadowElevation = 6.dp,
+            modifier = Modifier
+                .size(50.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    rotationZ = rotation
+                }
+                .semantics { contentDescription = "Quick actions" },
+            interactionSource = interaction,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = null,
+                    tint = Redesign.canvas,
+                    modifier = Modifier.size(28.dp),
+                )
             }
         }
     }

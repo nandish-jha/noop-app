@@ -1,6 +1,17 @@
 # Release notes — nandish-jha/noop-app fork
 
-**Latest:** [v8.2.5](https://github.com/nandish-jha/noop-app/releases/tag/v8.2.5)
+**Latest:** [v8.2.6](https://github.com/nandish-jha/noop-app/releases/tag/v8.2.6)
+
+---
+
+## v8.2.6 — Boop UI alignment
+
+Matches [nandish-jha/boop-app](https://github.com/nandish-jha/boop-app) terracotta dark design language.
+
+- **Palette:** Boop terracotta (`#141413` canvas, `#30302E` cards, `#E88868` accent, cream `#FAF9F5` text)
+- **Dock:** Floating pill nav (Today · Workouts · **+** · Sleep · Health) with cream center FAB — same pattern as Boop’s `UnifiedBottomNav`
+- **Icon:** Peacock-feather inspired mark in coral/amber with an **N** in the eye (distinct from Boop’s blue-green peacock)
+- Cards use 16dp radius to match Boop surfaces
 
 ---
 

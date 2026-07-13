@@ -49,30 +49,34 @@ import kotlin.math.roundToInt
 // Warm terracotta canvas, coral Charge accent, Manrope/Outfit-inspired typography weights.
 
 object Redesign {
-    val canvas = Color(0xFF1C1713)
-    val canvasDeep = Color(0xFF171310)
-    val card = Color(0xFF262019)
-    val cardAlt = Color(0xFF2E2721)
-    val cream = Color(0xFFF3ECE4)
-    val peach = Color(0xFFF2C4A8)
-    val coral = Color(0xFFF17A5C)
-    val coralActive = Color(0xFFF2946E)
-    val amber = Color(0xFFD98A2B)
-    val effort = Color(0xFFE6A23C)
-    val effortBg = Color(0x24E6A23C)
+    // Aligned with Boop terracotta dark (`boopTerracottaDarkPalette`).
+    val canvas = Color(0xFF141413)
+    val canvasDeep = Color(0xFF141413)
+    val phone = Color(0xFF1A1918)
+    val card = Color(0xFF30302E)
+    val cardAlt = Color(0xFF252320)
+    val cream = Color(0xFFFAF9F5)
+    val peach = Color(0xFFE8A898)
+    val coral = Color(0xFFE88868)
+    val coralActive = Color(0xFFE88868)
+    val amber = Color(0xFFD46E48)
+    val effort = Color(0xFFE8A898)
+    val effortBg = Color(0x28E8A898)
     val rest = Color(0xFFC77E92)
     val restBg = Color(0x29C77E92)
-    val strapBg = Color(0x12F3ECE4)
-    val ringTrack = Color(0xFF3E2E24)
+    val strapBg = Color(0x14FAF9F5)
+    val ringTrack = Color(0xFF3D3D3A)
     val positive = Color(0xFFB7D18A)
     val positiveBg = Color(0x299CB86B)
-    val headerGradientTop = Color(0xFF3A2A22)
-    val navBar = Color(0xE01C1713)
-    val navBorder = Color(0x14F3ECE4)
-    val muted = Color(0x8CF3ECE4)
+    val headerGradientTop = Color(0xFF252320)
+    val navBar = Color(0xD91A1918)
+    val navBorder = Color(0x24E8A898)
+    val muted = Color(0xFFB0AEA5)
+    val navUnselected = Color(0xFF8A8480)
     val heroRadius = 28.dp
-    val cardRadius = 20.dp
+    val cardRadius = 16.dp
     val pillRadius = 100.dp
+    val dockRadius = 22.dp
 }
 
 @Composable
@@ -87,7 +91,7 @@ fun RedesignTopBar(
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Redesign.headerGradientTop, Redesign.canvas),
+                    colors = listOf(Redesign.headerGradientTop, Redesign.phone),
                 ),
             )
             .padding(top = 58.dp, start = 20.dp, end = 20.dp, bottom = 18.dp),
