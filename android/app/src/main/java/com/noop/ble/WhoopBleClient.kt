@@ -476,6 +476,9 @@ class WhoopBleClient(
         // MARK: Historical-offload timers (ported from BLEManager.swift, same constants).
         /** Periodic re-offload of the type-47 store while connected+bonded. 900s = 15 min (matches WHOOP). */
         private const val BACKFILL_INTERVAL_MS = 900_000L
+        /** When Strap battery saver is on and the last offload proved caught-up, wait this long before
+         *  the next idle sync (45 min). Productive syncs / Sync now still use [BACKFILL_INTERVAL_MS]. */
+        private const val BACKFILL_CAUGHT_UP_MS = 2_700_000L
         /** How far back the inactivity check reads gravity on each offload completion (4 h comfortably
          *  spans the threshold + re-nudge cadence and a separating Active break for bout continuity). */
         private const val INACTIVITY_LOOKBACK_S = 4 * 3600L
@@ -603,14 +606,20 @@ class WhoopBleClient(
         // disconnect/reconnect fixes is really a missing keep-alive. We re-arm + poll battery every
         // 30s, and bounce a truly silent link after 120s (the auto version of disconnect+reconnect).
         private const val KEEPALIVE_INTERVAL_MS = 30_000L
+        /** Idle keep-alive cadence when Strap battery saver is on and nothing wants live HR (90s). */
+        private const val KEEPALIVE_IDLE_MS = 90_000L
         /** No inbound data for this long ⇒ the link/stream stalled; bounce it to resume streaming. */
         private const val KEEPALIVE_STALL_MS = 120_000L
+        /** Softer stall fuse when saver is on and realtime is disarmed — silence is expected without a live stream. */
+        private const val KEEPALIVE_STALL_IDLE_MS = 300_000L
         /** #580: longer stall fuse for a known history-empty 5/MG. Live HR over 0x2A37 keeps the link alive
          *  but can lull >120s (off-wrist / resting) while the empty offload leaves the data channel quiet,
          *  so the tight 120s rule bounced a healthy link every ~2 min. 10 min stops the thrash. */
         private const val KEEPALIVE_STALL_5MG_EMPTY_MS = 600_000L
         /** Stream gone quiet this long (but not yet stall) ⇒ re-subscribe in case a CCCD silently dropped. */
         private const val KEEPALIVE_QUIET_MS = 45_000L
+        /** Quiet re-subscribe threshold while saver is on and realtime is off (less CCCD chatter). */
+        private const val KEEPALIVE_QUIET_IDLE_MS = 120_000L
 
         /** A CCCD write can transiently return BUSY if the stack slot hasn't freed yet; retry the same
          *  subscribe a few times (short backoff) before giving up, rather than dropping the stream. */
@@ -1479,6 +1488,14 @@ class WhoopBleClient(
     /** What we last told the strap (armed = TOGGLE_REALTIME_HR 1). Lets [reconcileRealtime] send the
      *  toggle only on the false↔true edge instead of on every input change. */
     @Volatile private var realtimeArmed = false
+    /**
+     * Strap battery saver (#idle link). Softens keep-alive + stretches caught-up history sync.
+     * Does not stop on-wrist recording or history banking; live HR still arms for screens / Continuous HRV.
+     * Default mirrors [NoopPrefs.strapBatterySaver] (ON).
+     */
+    @Volatile private var strapBatterySaver = true
+    /** Last completed offload proved caught-up — next periodic delay may stretch when saver is on. */
+    @Volatile private var lastBackfillCaughtUp = false
     /** Wall-clock of the last inbound notification — drives the keep-alive liveness watchdog. */
     @Volatile private var lastDataAtMs = 0L
     /** True once we've re-subscribed during the CURRENT quiet episode, so the keep-alive re-subscribes
@@ -3704,7 +3721,7 @@ class WhoopBleClient(
         keepAliveTick = 0
         lastDataAtMs = System.currentTimeMillis()   // arm the watchdog from "now", not 1970
         handler.post { refreshBattery() }
-        handler.postDelayed(keepAliveRunnable, KEEPALIVE_INTERVAL_MS)
+        handler.postDelayed(keepAliveRunnable, keepAliveIntervalMs())
     }
 
     private fun stopKeepAlive() {
@@ -3735,8 +3752,12 @@ class WhoopBleClient(
             // >120s when the strap is off-wrist / resting, and an empty offload leaves the data channel
             // quiet — so the old 120s rule disconnected/rescanned a perfectly healthy link every ~2 min (the
             // thrash this fixes). A WHOOP 4 (real "not recording" path) keeps the tight 120s fuse.
-            val bounceFuse = if (connectedFamily == DeviceFamily.WHOOP5 && whoop5EmptyOffload.historyEmpty)
-                KEEPALIVE_STALL_5MG_EMPTY_MS else KEEPALIVE_STALL_MS
+            val bounceFuse = when {
+                connectedFamily == DeviceFamily.WHOOP5 && whoop5EmptyOffload.historyEmpty ->
+                    KEEPALIVE_STALL_5MG_EMPTY_MS
+                strapBatterySaver && !wantsRealtime -> KEEPALIVE_STALL_IDLE_MS
+                else -> KEEPALIVE_STALL_MS
+            }
             if (silentMs > bounceFuse) {
                 // Nothing for the fuse window — the live stream/link stalled. Bounce it: the auto-rescan on
                 // disconnect re-bonds and resumes streaming (the automatic version of the manual fix).
@@ -3755,7 +3776,8 @@ class WhoopBleClient(
                 // but only ONCE per quiet episode. Re-subscribing all notify chars every 30s tick floods
                 // descriptor writes that collide with the command queue on a slow stack (#77); a single
                 // re-subscribe recovers a dropped CCCD, repeating it just adds congestion. Re-armed on data.
-                if (silentMs > KEEPALIVE_QUIET_MS && !resubscribedSinceData) {
+                val quietMs = if (strapBatterySaver && !wantsRealtime) KEEPALIVE_QUIET_IDLE_MS else KEEPALIVE_QUIET_MS
+                if (silentMs > quietMs && !resubscribedSinceData) {
                     resubscribedSinceData = true
                     enableLiveNotifications()
                 }
@@ -3774,10 +3796,12 @@ class WhoopBleClient(
                 }
                 reconcileRealtime()   // recomputes wantsRealtime from the fresh predicate; toggles only on an edge
                 keepAliveTick += 1
+                // Battery polls: every other tick when streaming; every 4th idle tick under saver.
+                val batteryEvery = if (strapBatterySaver && !wantsRealtime) 4 else 2
                 if (connectedFamily == DeviceFamily.WHOOP4) {
                     if (wantsRealtime) { realtimeArmed = true; send(CommandNumber.TOGGLE_REALTIME_HR, byteArrayOf(1)) }
-                    if (keepAliveTick % 2 == 0) send(CommandNumber.GET_BATTERY_LEVEL)
-                } else if (keepAliveTick % 2 == 0) {
+                    if (keepAliveTick % batteryEvery == 0) send(CommandNumber.GET_BATTERY_LEVEL)
+                } else if (keepAliveTick % batteryEvery == 0) {
                     // 5/MG: poll the standard 0x2A19 characteristic (proprietary cmd isn't framed).
                     refreshBattery()
                 }
@@ -3786,7 +3810,7 @@ class WhoopBleClient(
 
         // Always re-arm the cadence. After a bounce the pending disconnect cancels this via reset(); a
         // tick that fires while disconnected returns early above — so the keep-alive is never orphaned.
-        handler.postDelayed(keepAliveRunnable, KEEPALIVE_INTERVAL_MS)
+        handler.postDelayed(keepAliveRunnable, keepAliveIntervalMs())
     }
 
     /**
@@ -3836,6 +3860,24 @@ class WhoopBleClient(
         keepStreamForData = keep
         reconcileRealtime()
     }
+
+    /** Prefer the lighter idle link: longer keep-alive / softer bounce / stretched caught-up sync. */
+    fun setStrapBatterySaver(enabled: Boolean) {
+        strapBatterySaver = enabled
+        // Re-arm timers with the new cadence while connected.
+        if (_state.value.connected && _state.value.bonded) {
+            handler.post {
+                startKeepAlive()
+                if (!backfilling) startBackfillTimer()
+            }
+        }
+    }
+
+    private fun keepAliveIntervalMs(): Long =
+        if (strapBatterySaver && !wantsRealtime) KEEPALIVE_IDLE_MS else KEEPALIVE_INTERVAL_MS
+
+    private fun nextBackfillDelayMs(): Long =
+        if (strapBatterySaver && lastBackfillCaughtUp) BACKFILL_CAUGHT_UP_MS else BACKFILL_INTERVAL_MS
 
     /** #927: the continuous-capture side of the realtime want, window-gated. True while the "Continuous
      *  HRV capture" preference wants the stream held open AND, when "overnight only" is on, the local
@@ -4400,19 +4442,22 @@ class WhoopBleClient(
      * thread, and every other timer/GATT path is pinned to this handler (see connectGatt(..., handler)).
      */
     fun syncNow() {
-        handler.post { requestSync() }
+        handler.post {
+            lastBackfillCaughtUp = false
+            requestSync()
+        }
     }
 
     /** Periodic-timer callback: re-runs the type-47 offload (the primary metric sync). */
     private fun triggerPeriodicBackfill() {
         requestSync()
         // Re-arm regardless so the cadence continues for the life of the connection.
-        handler.postDelayed(periodicBackfillRunnable, BACKFILL_INTERVAL_MS)
+        handler.postDelayed(periodicBackfillRunnable, nextBackfillDelayMs())
     }
 
     private fun startBackfillTimer() {
         handler.removeCallbacks(periodicBackfillRunnable)
-        handler.postDelayed(periodicBackfillRunnable, BACKFILL_INTERVAL_MS)
+        handler.postDelayed(periodicBackfillRunnable, nextBackfillDelayMs())
     }
 
     private fun stopBackfillTimer() {
@@ -4708,10 +4753,14 @@ class WhoopBleClient(
                 // STAYS engaged for the rest of this connection (the 900s floor takes over); zeroing it here
                 // would immediately re-arm the cap and let a runaway strap spin again.
                 if (count < MAX_AUTO_CONTINUES) {
-                    handler.post { consecutiveAutoContinues = 0 }
+                    handler.post {
+                        consecutiveAutoContinues = 0
+                        lastBackfillCaughtUp = true
+                    }
                 }
                 return@launch
             }
+            handler.post { lastBackfillCaughtUp = false }
             handler.post {
                 // Re-check on the main looper: a real backfill may already have re-started (periodic) in
                 // the gap. requestSync's own gate handles that, but skip the log/counter churn if so.

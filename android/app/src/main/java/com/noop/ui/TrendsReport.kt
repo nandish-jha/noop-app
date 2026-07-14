@@ -187,9 +187,9 @@ object TrendsReportRenderer {
     private const val POSITIVE = 0xFF03E095.toInt()   // WHOOP green (matches statusPositive)
     private const val NEGATIVE = 0xFFE0662F.toInt()
 
-    private val sans = Typeface.create("sans-serif", Typeface.NORMAL)
-    private val sansBold = Typeface.create("sans-serif", Typeface.BOLD)
-    private val sansMedium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    private var sans: Typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+    private var sansBold: Typeface = Typeface.create("sans-serif", Typeface.BOLD)
+    private var sansMedium: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
 
     /**
      * Render [report] (+ its sparkline [series]) to a one-page PDF file in the cache and
@@ -203,6 +203,12 @@ object TrendsReportRenderer {
         series: Map<ReportMetric, List<Double>>,
         generatedOn: String,
     ): File? = runCatching {
+        sans = context.noopSansTypeface(androidx.compose.ui.text.font.FontWeight.Normal)
+            ?: Typeface.create("sans-serif", Typeface.NORMAL)
+        sansBold = context.noopSansTypeface(androidx.compose.ui.text.font.FontWeight.Bold)
+            ?: Typeface.create("sans-serif", Typeface.BOLD)
+        sansMedium = context.noopSansTypeface(androidx.compose.ui.text.font.FontWeight.Medium)
+            ?: Typeface.create("sans-serif-medium", Typeface.NORMAL)
         val doc = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(PAGE_W, PAGE_H, 1).create()
         val page = doc.startPage(pageInfo)

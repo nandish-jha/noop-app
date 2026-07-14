@@ -411,6 +411,9 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
     // instead of 24/7. Default OFF so existing users keep the always-on behaviour. Local mirror.
     var continuousHrvOvernight by remember { mutableStateOf(NoopPrefs.continuousHrvOvernight(context)) }
 
+    // Strap battery saver — soften idle BLE chatter. Default ON.
+    var strapBatterySaver by remember { mutableStateOf(NoopPrefs.strapBatterySaver(context)) }
+
     // "Debug logging" — mirror the strap log to logcat (adb). Default OFF so normal users don't.
     var debugLogging by remember { mutableStateOf(NoopPrefs.debugLogging(context)) }
 
@@ -1146,6 +1149,42 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                             ),
                         )
                     }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Strap battery saver",
+                            style = NoopType.subhead,
+                            color = Palette.textPrimary,
+                        )
+                        Text(
+                            "Uses less strap power while you’re not watching live heart rate: quieter check-ins and less frequent history sync when you’re already up to date. Your strap still tracks while you wear it, and sleep / Charge / Effort still sync. Turn off if you want the most aggressive sync cadence.",
+                            style = NoopType.footnote,
+                            color = Palette.textTertiary,
+                        )
+                    }
+                    Switch(
+                        checked = strapBatterySaver,
+                        onCheckedChange = {
+                            strapBatterySaver = it
+                            vm.setStrapBatterySaver(it)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Palette.surfaceBase,
+                            checkedTrackColor = Palette.accent,
+                            uncheckedThumbColor = Palette.textSecondary,
+                            uncheckedTrackColor = Palette.surfaceInset,
+                            uncheckedBorderColor = Palette.hairline,
+                        ),
+                        modifier = Modifier.semantics {
+                            contentDescription = "Strap battery saver"
+                        },
+                    )
                 }
 
                 // Diagnostics: "Debug logging" mirrors the strap log to logcat (adb). Default OFF — a

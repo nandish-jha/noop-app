@@ -44,8 +44,8 @@ import com.noop.notif.ScheduledReportNotifier
 import com.noop.notif.ScheduledReportPolicy
 import com.noop.notif.scorePctOrNull
 import com.noop.protocol.CommandNumber
-import com.noop.widget.WidgetSnapshot
 import com.noop.widget.WidgetSnapshotStore
+import com.noop.widget.buildWidgetSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -703,17 +703,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     val anchorRow = widgetAnchorRow(days, logicalKey, localKey)
                     WidgetSnapshotStore.push(
                         appContext,
-                        WidgetSnapshot(
-                            recoveryPct = anchorRow?.recovery?.roundToInt(),
-                            // Rest = the sleep_performance composite from THIS row's banked stage figures
-                            // (pure, honest-null until last night is scored); Effort = the 0–100 strain. (#516)
-                            restPct = anchorRow?.let { RestScorer.restFromDaily(it)?.roundToInt() },
-                            effortPct = anchorRow?.strain?.roundToInt(),
-                            heartRate = live.heartRate,
-                            batteryPct = live.batteryPct?.roundToInt(),
-                            connected = live.connected,
-                            updatedAtMs = System.currentTimeMillis(),
-                        ),
+                        buildWidgetSnapshot(anchorRow, live),
                     )
                 }
             }
@@ -891,6 +881,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // connection on — without it there's nothing keeping the link up to stream over, so a continuous
         // want would be meaningless. Pushed BEFORE autoReconnectOnLaunch so a launch reconnect arms it.
         ble.setKeepStreamForData(continuousHrvEffective())
+        ble.setStrapBatterySaver(NoopPrefs.strapBatterySaver(appContext))
 
         // Reconnect to the strap we last bonded to, so the user doesn't have to tap Connect after an
         // app update / restart (#67). Self-gates on the keep-connected pref + a saved strap + permission.
@@ -1589,6 +1580,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun setContinuousHrvOvernight(enabled: Boolean) {
         NoopPrefs.setContinuousHrvOvernight(appContext, enabled)
         ble.setKeepStreamForData(continuousHrvEffective())
+    }
+
+    /**
+     * Flip "Strap battery saver" (Settings → Strap). Softens idle keep-alive chatter and spaces history
+     * sync when already caught up. Does not stop on-wrist recording or live HR when a screen / Continuous
+     * HRV wants it.
+     */
+    fun setStrapBatterySaver(enabled: Boolean) {
+        NoopPrefs.setStrapBatterySaver(appContext, enabled)
+        ble.setStrapBatterySaver(enabled)
     }
 
     /**

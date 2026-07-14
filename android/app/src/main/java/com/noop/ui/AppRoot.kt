@@ -704,13 +704,29 @@ private fun MoreScreen(onNavigate: (String) -> Unit) {
         )
 
         if (searching) {
-            val localizedHits = drawerGroups.flatMap { it.items }.distinct().filter { dest ->
+            val destPool = (
+                drawerGroups.flatMap { it.items } +
+                    listOf(Destination.Today, Destination.Sleep, Destination.Trends, Destination.CoupledView)
+                ).distinct()
+            val destinationHits = destPool.mapNotNull { dest ->
                 val title = stringResource(dest.titleRes)
-                title.contains(queryTrimmed, ignoreCase = true) ||
-                    dest.route.contains(queryTrimmed, ignoreCase = true) ||
-                    dest.name.contains(queryTrimmed, ignoreCase = true)
+                val hay = MoreSearch.destinationHaystack(title, dest.route, dest.name)
+                if (MoreSearch.matches(queryTrimmed, hay)) {
+                    MoreSearch.Hit(route = dest.route, title = title)
+                } else null
             }
-            if (localizedHits.isEmpty()) {
+            val settingsHits = MoreSearch.settingsItems.mapNotNull { (label, keywords) ->
+                if (MoreSearch.matches(queryTrimmed, MoreSearch.settingsHaystack(label, keywords))) {
+                    MoreSearch.Hit(
+                        route = Destination.Settings.route,
+                        title = "$label · Settings",
+                        settingsDeepLink = true,
+                    )
+                } else null
+            }
+            // Prefer screen destinations over duplicate Settings deep links with the same title stem.
+            val hits = (destinationHits + settingsHits).distinctBy { it.title.lowercase() }
+            if (hits.isEmpty()) {
                 Text(
                     stringResource(R.string.more_search_empty),
                     style = NoopType.subhead,
@@ -719,9 +735,19 @@ private fun MoreScreen(onNavigate: (String) -> Unit) {
             } else {
                 NoopCard(padding = 0.dp) {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        localizedHits.forEachIndexed { i, dest ->
-                            MoreRow(dest = dest, onClick = { onNavigate(dest.route) })
-                            if (i < localizedHits.lastIndex) {
+                        hits.forEachIndexed { i, hit ->
+                            if (hit.settingsDeepLink) {
+                                MoreSearchSettingsRow(
+                                    title = hit.title,
+                                    onClick = { onNavigate(hit.route) },
+                                )
+                            } else {
+                                val dest = destPool.firstOrNull { it.route == hit.route }
+                                if (dest != null) {
+                                    MoreRow(dest = dest, onClick = { onNavigate(dest.route) })
+                                }
+                            }
+                            if (i < hits.lastIndex) {
                                 HorizontalDivider(
                                     color = Palette.hairline,
                                     modifier = Modifier.padding(start = 50.dp),
@@ -823,6 +849,33 @@ private fun MoreRow(dest: Destination, onClick: () -> Unit) {
         Icon(dest.icon, contentDescription = null, tint = Palette.accent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(14.dp))
         Text(stringResource(dest.titleRes), style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
+        Icon(
+            Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = Palette.textTertiary,
+            modifier = Modifier.size(Metrics.iconSmall),
+        )
+    }
+}
+
+/** Settings deep-link row shown in Menu search results. */
+@Composable
+private fun MoreSearchSettingsRow(title: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.Settings,
+            contentDescription = null,
+            tint = Palette.accent,
+            modifier = Modifier.size(20.dp),
+        )
+        Spacer(Modifier.width(14.dp))
+        Text(title, style = NoopType.body, color = Palette.textPrimary, modifier = Modifier.weight(1f))
         Icon(
             Icons.Filled.ChevronRight,
             contentDescription = null,

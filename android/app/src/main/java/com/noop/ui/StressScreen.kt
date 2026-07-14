@@ -536,6 +536,7 @@ private fun DaytimeStressLine(hours: List<DaytimeStress.HourPoint>) {
     val textPrimary = Palette.textPrimary
     val stressColor = Palette.stressColor
     val yAxisPx = with(LocalDensity.current) { stressYAxisWidth.toPx() }
+    val stressContext = LocalContext.current
 
     // PERF (#scroll-jank — drawing-bound): this chart is scrubbable, so a finger drag re-records the
     // whole Canvas at ~60fps. Previously every frame rebuilt the gradient line + fill Paths and the
@@ -545,20 +546,22 @@ private fun DaytimeStressLine(hours: List<DaytimeStress.HourPoint>) {
     //   • a thin DYNAMIC overlay Canvas — just the crosshair, dot and tooltip — that reads `scrubFrac`.
     // The geometry (yAxisPx, 8dp top/bot pad, yFor, stepX) is byte-identical to the old single Canvas,
     // and the two layers share the same Box bounds, so the rendered pixels are unchanged. Hoisted Paints.
-    val labelPaint = remember(textTertiary) {
+    val labelPaint = remember(textTertiary, stressContext) {
         android.graphics.Paint().apply {
             isAntiAlias = true
             textSize = 22f
             textAlign = android.graphics.Paint.Align.RIGHT
             color = textTertiary.toArgb()
+            typeface = stressContext.noopSansTypeface(FontWeight.Normal)
         }
     }
-    val tooltipPaint = remember(textPrimary) {
+    val tooltipPaint = remember(textPrimary, stressContext) {
         android.graphics.Paint().apply {
             isAntiAlias = true
             textSize = 26f
             color = textPrimary.toArgb()
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            typeface = stressContext.noopSansTypeface(FontWeight.Bold)
+                ?: android.graphics.Typeface.DEFAULT_BOLD
             textAlign = android.graphics.Paint.Align.CENTER
         }
     }

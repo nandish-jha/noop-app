@@ -17,6 +17,13 @@ approximate; downloads are on the [Releases](https://github.com/NoopApp/noop/rel
 
 ---
 
+## 9.2.0: Strap battery saver, sharper Menu search, more widgets (Android)
+
+- **Strap battery saver** (on by default): quieter idle check-ins and spaced history sync when caught up; 24/7 on-wrist tracking and scores still work. Settings → Strap.
+- **Menu search**: synonyms, Settings deep links, Today/Sleep/Strain.
+- **Typography**: Boop page-title size; Inter on charts / Stress / PDF reports.
+- **Widgets**: Charge, Live, Night, Vitals in your Boop palette.
+
 ## 7.9.0: Coupled view, a rebuilt workout list, and numbers in your journal (all platforms)
 
 Three sizeable new features, the fix wave that was in flight, and a hardening pass a pre-release

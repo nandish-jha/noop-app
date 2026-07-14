@@ -185,6 +185,11 @@ object NoopPrefs {
      *  [com.noop.ble.WhoopBleClient] at every arm site (re-derived at arm time, never cached). */
     const val KEY_CONTINUOUS_HRV_OVERNIGHT = "noop.continuousHrvOvernight"
 
+    /** "Strap battery saver": when on (default), NOOP softens idle keep-alive chatter and spaces history
+     *  sync while caught up. Your strap still records while you wear it; live HR still streams when a
+     *  Live/workout screen (or Continuous HRV) wants it. Default ON. */
+    const val KEY_STRAP_BATTERY_SAVER = "noop.strapBatterySaver"
+
     /** The calendar day (yyyy-MM-dd) on which the morning-journal nudge was last shown, keeps the
      *  Sleep screen's "Good morning" sheet to at most once per day. */
     const val KEY_LAST_JOURNAL_PROMPT = "noop.lastJournalPromptDay"
@@ -239,6 +244,13 @@ object NoopPrefs {
 
     fun setContinuousHrvOvernight(context: Context, enabled: Boolean) {
         of(context).edit().putBoolean(KEY_CONTINUOUS_HRV_OVERNIGHT, enabled).apply()
+    }
+
+    fun strapBatterySaver(context: Context): Boolean =
+        of(context).getBoolean(KEY_STRAP_BATTERY_SAVER, true)
+
+    fun setStrapBatterySaver(context: Context, enabled: Boolean) {
+        of(context).edit().putBoolean(KEY_STRAP_BATTERY_SAVER, enabled).apply()
     }
 
     /** Whether the strap log is mirrored to logcat. Default false (normal users don't log to adb). */

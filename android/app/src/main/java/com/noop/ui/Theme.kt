@@ -30,6 +30,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+import android.graphics.Typeface
+import android.widget.EditText
+import android.widget.TextView
+import androidx.core.content.res.ResourcesCompat
 import com.noop.R
 
 // MARK: - Palette — the "Titanium & Gold" re-skin (mirrors StrandDesign/Palette.swift)
@@ -442,11 +447,11 @@ object NoopType {
 
     fun displayTracking(size: Float = 36f): Float = -size * 0.015f
 
-    /** Boop page header title — Source Serif SemiBold 27 / 32. */
+    /** Boop page header title — Source Serif SemiBold 26 / 32 (matches BoopPageTitle). */
     val pageTitle = TextStyle(
         fontFamily = serif,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 27.sp,
+        fontSize = 26.sp,
         lineHeight = 32.sp,
         letterSpacing = (-0.2).sp,
     )
@@ -565,6 +570,35 @@ object NoopType {
 
     /** Legacy tracking constant used by scaled overlines. */
     const val overlineTracking = 0.8f
+}
+
+/** Inter typeface for Canvas / PDF / TextView (Boop's `boopSansTypeface`). */
+fun Context.noopSansTypeface(weight: FontWeight = FontWeight.Normal): Typeface? {
+    val resId = when (weight) {
+        FontWeight.Bold, FontWeight.ExtraBold, FontWeight.Black -> R.font.inter_bold
+        FontWeight.SemiBold -> R.font.inter_semibold
+        FontWeight.Medium -> R.font.inter_medium
+        else -> R.font.inter_regular
+    }
+    return ResourcesCompat.getFont(this, resId)
+}
+
+/** Source Serif 4 typeface for Canvas / TextView (Boop's `boopSerifTypeface`). */
+fun Context.noopSerifTypeface(weight: FontWeight = FontWeight.Normal): Typeface? {
+    val resId = when (weight) {
+        FontWeight.SemiBold, FontWeight.Bold -> R.font.source_serif_4_semibold
+        FontWeight.Medium -> R.font.source_serif_4_medium
+        else -> R.font.source_serif_4
+    }
+    return ResourcesCompat.getFont(this, resId)
+}
+
+fun TextView.applyNoopSans(weight: FontWeight = FontWeight.Normal) {
+    context.noopSansTypeface(weight)?.let { typeface = it }
+}
+
+fun EditText.applyNoopSans(weight: FontWeight = FontWeight.Normal) {
+    context.noopSansTypeface(weight)?.let { typeface = it }
 }
 
 /** Full Material3 type scale matching Boop's `boopTypography()`. */

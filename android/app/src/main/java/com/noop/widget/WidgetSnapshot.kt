@@ -5,34 +5,40 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.updateAll
 
 /**
- * The handful of numbers the home-screen widget shows, persisted to SharedPreferences so the
- * widget can render after a process restart (Glance recomposes from disk, not from app memory).
+ * The handful of numbers the home-screen widgets show, persisted to SharedPreferences so Glance
+ * can recompose after a process restart (from disk, not from app memory).
  */
 data class WidgetSnapshot(
     /** Today's recovery / Charge 0–100, null until NOOP has scored enough nights (honest-blank). */
     val recoveryPct: Int? = null,
-    /** Today's Rest 0–100 (the sleep_performance composite), null until last night is scored (#516). */
+    /** Today's Rest 0–100 (the sleep_performance composite), null until last night is scored. */
     val restPct: Int? = null,
-    /** Today's Effort 0–100 (the day's strain on the 0–100 scale), null until there's a HR window (#516). */
+    /** Today's Effort 0–100 (the day's strain on the 0–100 scale). */
     val effortPct: Int? = null,
     /** Live heart rate, null when not streaming. */
     val heartRate: Int? = null,
     /** Strap battery 0–100, null until the strap reports it. */
     val batteryPct: Int? = null,
     val connected: Boolean = false,
-    /** Wall-clock millis of the last push, so the widget can show honest staleness. */
+    /** Asleep minutes from the anchored day row (totalSleepMin). */
+    val sleepMin: Int? = null,
+    /** Overnight average HRV (ms) from the anchored day row. */
+    val hrvMs: Int? = null,
+    /** Overnight resting HR from the anchored day row. */
+    val restingHr: Int? = null,
+    /** Steps for the anchored day, when available. */
+    val steps: Int? = null,
+    /** Wall-clock millis of the last push, so widgets can show honest staleness. */
     val updatedAtMs: Long = 0L,
 )
 
 /**
  * Persists snapshots and tells Glance to recompose. Both producers funnel through [push]:
- * [com.noop.ble.WhoopConnectionService] (long-lived — the widget's heartbeat while the app UI is
- * closed) and [com.noop.ui.AppViewModel] (covers foreground use with the background service off).
+ * [com.noop.ble.WhoopConnectionService] and [com.noop.ui.AppViewModel].
  *
- * Throttled by [PushGate] (see its KDoc). CALLER CONTRACT (#82): collect with backpressure
- * (`conflate()` + `collect`), NEVER `collectLatest` — push suspends in Glance machinery longer than
- * the live-HR emission interval (~1/s), so collectLatest cancels every push mid-flight and the
- * widget starves on stale prefs forever while the strap streams.
+ * Throttled by [PushGate]. CALLER CONTRACT (#82): collect with `conflate()` + `collect`, never
+ * `collectLatest` — push suspends in Glance longer than the live-HR interval, so collectLatest
+ * cancels every push mid-flight and widgets starve on stale prefs while the strap streams.
  */
 object WidgetSnapshotStore {
     private const val FILE = "noop_widget"
@@ -42,17 +48,25 @@ object WidgetSnapshotStore {
         // Cheap, non-suspending gate FIRST — at live-HR cadence (~1/s) almost every call ends here.
         if (!PushGate.admit(snap)) return
 
-        // Persist before anything suspending, and only THEN mark the gate (#82: marking before the
-        // write let a cancelled push burn the refresh window — the widget starved on stale prefs).
+        // Persist before anything suspending, and only THEN mark the gate (#82).
         // Saving even with no widget placed means a widget added later renders fresh data instantly.
         save(app, snap)
         PushGate.markPushed(snap)
 
-        val ids = runCatching {
-            GlanceAppWidgetManager(app).getGlanceIds(NoopGlanceWidget::class.java)
-        }.getOrDefault(emptyList())
-        if (ids.isEmpty()) return
-        runCatching { NoopGlanceWidget().updateAll(app) }
+        val manager = GlanceAppWidgetManager(app)
+        val widgets = listOf(
+            NoopGlanceWidget() to NoopGlanceWidget::class.java,
+            NoopChargeGlanceWidget() to NoopChargeGlanceWidget::class.java,
+            NoopLiveGlanceWidget() to NoopLiveGlanceWidget::class.java,
+            NoopNightGlanceWidget() to NoopNightGlanceWidget::class.java,
+            NoopVitalsGlanceWidget() to NoopVitalsGlanceWidget::class.java,
+        )
+        for ((widget, cls) in widgets) {
+            val ids = runCatching { manager.getGlanceIds(cls) }.getOrDefault(emptyList())
+            if (ids.isNotEmpty()) {
+                runCatching { widget.updateAll(app) }
+            }
+        }
     }
 
     fun save(context: Context, snap: WidgetSnapshot) {
@@ -63,6 +77,10 @@ object WidgetSnapshotStore {
             .putInt("hr", snap.heartRate ?: -1)
             .putInt("battery", snap.batteryPct ?: -1)
             .putBoolean("connected", snap.connected)
+            .putInt("sleepMin", snap.sleepMin ?: -1)
+            .putInt("hrvMs", snap.hrvMs ?: -1)
+            .putInt("restingHr", snap.restingHr ?: -1)
+            .putInt("steps", snap.steps ?: -1)
             .putLong("updatedAt", snap.updatedAtMs)
             .apply()
     }
@@ -76,17 +94,18 @@ object WidgetSnapshotStore {
             heartRate = p.getInt("hr", -1).takeIf { it > 0 },
             batteryPct = p.getInt("battery", -1).takeIf { it >= 0 },
             connected = p.getBoolean("connected", false),
+            sleepMin = p.getInt("sleepMin", -1).takeIf { it >= 0 },
+            hrvMs = p.getInt("hrvMs", -1).takeIf { it >= 0 },
+            restingHr = p.getInt("restingHr", -1).takeIf { it > 0 },
+            steps = p.getInt("steps", -1).takeIf { it >= 0 },
             updatedAtMs = p.getLong("updatedAt", 0L),
         )
     }
 }
 
 /**
- * The push-throttle decision, extracted pure so it's unit-testable (PushGateTests). Meaningful
- * changes (recovery, battery 5%-bucket, connection, and HR presence — so the FIRST heart-rate
- * sample shows immediately, #82) admit straight away; an unchanged key re-admits once per
- * [HR_REFRESH_MS] so the displayed HR still ticks. Glance re-inflation is far heavier than a
- * notification post, hence the gate.
+ * Push-throttle: meaningful score/connection/HR-presence/battery-bucket/vitals changes admit
+ * immediately; otherwise refresh at most once per [HR_REFRESH_MS].
  */
 internal object PushGate {
     private const val HR_REFRESH_MS = 60_000L
@@ -95,9 +114,8 @@ internal object PushGate {
     private var lastPushAtMs = 0L
 
     private fun keyOf(snap: WidgetSnapshot): String =
-        // Rest + Effort join the change-key (#516) so a freshly-scored 2x2 score lands immediately, the
-        // same way recovery does — not waiting out the HR refresh window.
         "${snap.recoveryPct}|${snap.restPct}|${snap.effortPct}|" +
+            "${snap.sleepMin}|${snap.hrvMs}|${snap.restingHr}|${snap.steps}|" +
             "${snap.batteryPct?.div(5)}|${snap.connected}|${snap.heartRate != null}"
 
     fun admit(snap: WidgetSnapshot): Boolean =

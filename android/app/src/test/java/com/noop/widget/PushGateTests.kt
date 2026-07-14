@@ -101,4 +101,16 @@ class PushGateTests {
         PushGate.markPushed(snap(recovery = 60, rest = 80, effort = 12, hr = 70, at = 1_000))
         assertFalse(PushGate.admit(snap(recovery = 60, rest = 80, effort = 12, hr = 71, at = 2_000)))
     }
+
+    @Test
+    fun overnightVitalsChangeIsAdmittedImmediately() {
+        PushGate.markPushed(
+            WidgetSnapshot(hrvMs = null, sleepMin = null, restingHr = null, steps = null, updatedAtMs = 1_000),
+        )
+        assertTrue(
+            PushGate.admit(
+                WidgetSnapshot(hrvMs = 55, sleepMin = 420, restingHr = 52, steps = 8_000, updatedAtMs = 2_000),
+            ),
+        )
+    }
 }

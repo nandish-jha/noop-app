@@ -30,6 +30,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.util.Locale
@@ -285,15 +287,14 @@ fun LineChart(
         // separate drawWithContent overlay so a cursor drag re-issues only the marker, never the chart.
         // The pre-laid Paint for the value label is remembered, not allocated per draw. Pixel-identical:
         // same pointsFor geometry, same strokePx/pads, same gradient stops, same marker + label drawing.
-        val markerPaint = remember(color) {
+        val chartContext = LocalContext.current
+        val markerPaint = remember(color, chartContext) {
             android.graphics.Paint().apply {
                 isAntiAlias = true
                 textSize = 30f
                 this.color = color.copy(alpha = StrandAlpha.chartLabel).toArgb()
-                typeface = android.graphics.Typeface.create(
-                    android.graphics.Typeface.DEFAULT,
-                    android.graphics.Typeface.BOLD,
-                )
+                typeface = chartContext.noopSansTypeface(FontWeight.Bold)
+                    ?: android.graphics.Typeface.DEFAULT_BOLD
             }
         }
         Box(
@@ -478,15 +479,14 @@ fun BarChart(
     var selectedIndex by remember(cleanValues) { mutableIntStateOf(-1) }
     // Pre-laid value-label Paint, remembered rather than allocated inside the draw block (the old code
     // built a fresh android.graphics.Paint every draw). Keyed on color so it tracks a tint change.
-    val barLabelPaint = remember(color) {
+    val chartContext = LocalContext.current
+    val barLabelPaint = remember(color, chartContext) {
         android.graphics.Paint().apply {
             isAntiAlias = true
             textSize = 30f
             this.color = color.copy(alpha = StrandAlpha.chartLabel).toArgb()
-            typeface = android.graphics.Typeface.create(
-                android.graphics.Typeface.DEFAULT,
-                android.graphics.Typeface.BOLD,
-            )
+            typeface = chartContext.noopSansTypeface(FontWeight.Bold)
+                ?: android.graphics.Typeface.DEFAULT_BOLD
         }
     }
     val unselectedColor = remember(color) { color.copy(alpha = StrandAlpha.unselectedBar) }

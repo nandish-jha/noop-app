@@ -22,7 +22,6 @@ import com.noop.alarm.SleepWindowWatcher
 import com.noop.alarm.SmartAlarmScheduler
 import com.noop.alarm.SmartAlarmStore
 import com.noop.analytics.IllnessWatch
-import com.noop.analytics.RestScorer
 import com.noop.data.DailyMetric
 import com.noop.location.GpsSession
 import com.noop.location.LocationTracker
@@ -30,8 +29,8 @@ import com.noop.notif.BatteryAlertNotifier
 import com.noop.notif.IllnessAlertNotifier
 import com.noop.ui.NoopPrefs
 import com.noop.ui.appLaunchIntent
-import com.noop.widget.WidgetSnapshot
 import com.noop.widget.WidgetSnapshotStore
+import com.noop.widget.buildWidgetSnapshot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -246,18 +245,7 @@ class WhoopConnectionService : Service() {
                 runCatching {
                     WidgetSnapshotStore.push(
                         this@WhoopConnectionService,
-                        WidgetSnapshot(
-                            recoveryPct = anchorRow?.recovery?.roundToInt(),
-                            // Rest = the sleep_performance composite from the anchor row's banked stage
-                            // figures (pure, honest-null until last night is scored); Effort = the 0-100
-                            // strain. Widget-only carry, so it shows the same day as Today. (#516/#911)
-                            restPct = anchorRow?.let { RestScorer.restFromDaily(it)?.roundToInt() },
-                            effortPct = anchorRow?.strain?.roundToInt(),
-                            heartRate = state.heartRate,
-                            batteryPct = state.batteryPct?.roundToInt(),
-                            connected = state.connected,
-                            updatedAtMs = System.currentTimeMillis(),
-                        ),
+                        buildWidgetSnapshot(anchorRow, state),
                     )
                 }
             }

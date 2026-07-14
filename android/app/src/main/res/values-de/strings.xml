@@ -3,6 +3,14 @@
     <!-- German (de). App name stays untranslated (brand). Nav terms mirror the iOS German pass where
          one exists, so the two platforms read the same. -->
     <string name="widget_description">Ruhe, Ladung und Anstrengung von heute, mit Live-Herzfrequenz und Band-Akku auf einen Blick.</string>
+    <string name="widget_charge_label">NOOP Ladung</string>
+    <string name="widget_charge_description">Heutige Ladung auf einen Blick.</string>
+    <string name="widget_live_label">NOOP Live</string>
+    <string name="widget_live_description">Live-Herzfrequenz und Band-Akku.</string>
+    <string name="widget_night_label">NOOP Nacht</string>
+    <string name="widget_night_description">Ruhe-Wert und Schlafdauer der letzten Nacht.</string>
+    <string name="widget_vitals_label">NOOP Vitalwerte</string>
+    <string name="widget_vitals_description">Nächtliche HRV, Ruhepuls, Schritte und Ladung.</string>
     <string name="widget_error">Das NOOP-Widget konnte nicht gezeichnet werden. Es erholt sich beim nächsten Update.</string>
 
     <string name="nav_today">Heute</string>
@@ -44,8 +52,8 @@
     <string name="more_group_health">Gesundheit</string>
     <string name="more_group_insights">Einblicke</string>
     <string name="more_group_data">Deine Daten</string>
-    <string name="more_search_hint">Menü durchsuchen</string>
-    <string name="more_search_empty">Keine Treffer</string>
+    <string name="more_search_hint">Screens, Einstellungen, Wecker… suchen</string>
+    <string name="more_search_empty">Keine Treffer — anderes Wort versuchen (Theme, Wecker, Belastung, Akku…)</string>
     <string name="more_subtitle">Einstellungen, Geräte und alle anderen Screens finden</string>
 
     <string name="action_live_hr">Live-HF</string>

@@ -2,6 +2,14 @@
 <resources>
     <string name="app_name">NOOP</string>
     <string name="widget_description">Today\'s Rest, Charge and Effort, with live heart rate and strap battery at a glance.</string>
+    <string name="widget_charge_label">NOOP Charge</string>
+    <string name="widget_charge_description">Today\'s Charge score at a glance.</string>
+    <string name="widget_live_label">NOOP Live</string>
+    <string name="widget_live_description">Live heart rate and strap battery.</string>
+    <string name="widget_night_label">NOOP Night</string>
+    <string name="widget_night_description">Last night\'s Rest score and time asleep.</string>
+    <string name="widget_vitals_label">NOOP Vitals</string>
+    <string name="widget_vitals_description">Overnight HRV, resting HR, steps, and Charge.</string>
     <string name="widget_error">NOOP widget couldn\'t draw — it will recover on the next update.</string>
 
     <!-- Navigation: bottom-bar tabs, the More page rows, and the top-bar screen titles. These are the
@@ -48,8 +56,8 @@
     <string name="more_group_health">Health</string>
     <string name="more_group_insights">Insights</string>
     <string name="more_group_data">Your data</string>
-    <string name="more_search_hint">Search menu</string>
-    <string name="more_search_empty">No matches</string>
+    <string name="more_search_hint">Search screens, settings, alarms…</string>
+    <string name="more_search_empty">No matches — try another word (theme, alarm, strain, battery…)</string>
     <string name="more_subtitle">Find settings, devices, and every other screen</string>
 
     <!-- Quick actions on the centre action button. -->

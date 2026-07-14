@@ -25,7 +25,7 @@ object AppChangelog {
      * Bump this when you add a release below. The "What's New" sheet shows automatically when the
      * stored last-seen version is behind this. (Decoupled from the bundle version on purpose.)
      */
-    const val CURRENT_VERSION = "9.1.0"
+    const val CURRENT_VERSION = "9.2.0"
 
     data class Release(
         val version: String,
@@ -36,6 +36,17 @@ object AppChangelog {
 
     /** Newest first. */
     val releases: List<Release> = listOf(
+        Release(
+            version = "9.2.0",
+            title = "Strap battery saver, sharper Menu search, more widgets",
+            date = "July 2026",
+            items = listOf(
+                "**Strap battery saver (on by default).** Quieter keep-alives and less frequent history sync when you’re already caught up — without stopping on-wrist tracking or sleep / Charge / Effort. Live heart rate still streams when you open Live or a workout (or turn on Continuous HRV). Toggle it under Settings → Strap.",
+                "**Menu search finds more.** Synonyms, Settings sections, and bottom-bar screens (Today / Sleep / Strain) — try alarm, theme, battery, strain.",
+                "**Boop fonts everywhere we can.** Page titles match Boop’s Source Serif size; charts, Stress tooltips, and PDF reports use Inter instead of the system default.",
+                "**More home-screen widgets.** Charge, Live, Night, and Vitals — coloured with your active Boop palette.",
+            ),
+        ),
         Release(
             version = "9.1.0",
             title = "Boop type + clearer Menu",
