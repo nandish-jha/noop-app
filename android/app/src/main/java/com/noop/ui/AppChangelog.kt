@@ -25,7 +25,7 @@ object AppChangelog {
      * Bump this when you add a release below. The "What's New" sheet shows automatically when the
      * stored last-seen version is behind this. (Decoupled from the bundle version on purpose.)
      */
-    const val CURRENT_VERSION = "7.9.0"
+    const val CURRENT_VERSION = "9.0.0"
 
     data class Release(
         val version: String,
@@ -36,6 +36,17 @@ object AppChangelog {
 
     /** Newest first. */
     val releases: List<Release> = listOf(
+        Release(
+            version = "9.0.0",
+            title = "Boop chrome polish",
+            date = "July 2026",
+            items = listOf(
+                "**Boop-matched chrome.** Dock icons use the Rounded set, header and screen padding match Boop's 16dp rhythm, and charge/effort/rest sit without an outer rectangle.",
+                "**Flat controls.** Buttons and segment selectors drop gradient/shade washes; liquid gauges everywhere are flat rings and bars.",
+                "**Sleep stages chart.** The stage timeline is a four-lane hypnogram; REM / Deep / Light / Awake rows underneath stay the same.",
+                "**Clear imported history.** Settings → Backup & restore can remove WHOOP export / Apple Health / Health Connect history without touching preferences.",
+            ),
+        ),
         Release(
             version = "7.9.0",
             title = "Coupled view, workouts rebuilt, journal numbers",

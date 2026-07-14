@@ -1096,31 +1096,20 @@ fun TodayScreen(
         // in-card scene here, and no rounded clip (a flat hero on the screen-level backdrop). The Charge
         // ring value reads WHITE (GlowRing's centre label) with a charge-green arc, matching the iOS source.
         item {
-        // The liquid hero CARD: a translucent near-black that floats over the day-of-sky so the vessels +
-        // white count-up numbers stay crisp — the card does the contrast work, not a muted sky. A rounded
-        // 26 corner + a faint white hairline give it the frosted-glass edge of the iOS liquid heroCard
-        // (heroFill = rgba(13,14,20,.80), stroke white@0.11). Mirrors the iOS LiquidTodayView heroCard.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .background(liquidHeroFill())
-                .border(1.dp, Palette.hairline, RoundedCornerShape(LIQUID_HERO_RADIUS))
-                .staggeredAppear(1),
-        ) {
-            ScoreHeroRow(
-                day = displayMetric,
-                restScore = restScoreForDay,
-                recoveryCalibration = recoveryCalibration,
-                lastScoredCharge = lastScoredCharge,
-                effortScale = effortScale,
-                liveTodayStrain = if (selectedDayOffset == 0) liveTodayStrain else null,
-                chargeProvenance = chargeProvenance,
-                restProvenance = restProvenance,
-                onScoreInfo = openGuide,
-                onChargeTap = { showChargeBreakdown = true },
-            )
-        }
+        // Charge · Effort · Rest float on the page (no outer card / rectangle), Boop-style.
+        ScoreHeroRow(
+            day = displayMetric,
+            restScore = restScoreForDay,
+            recoveryCalibration = recoveryCalibration,
+            lastScoredCharge = lastScoredCharge,
+            effortScale = effortScale,
+            liveTodayStrain = if (selectedDayOffset == 0) liveTodayStrain else null,
+            chargeProvenance = chargeProvenance,
+            restProvenance = restProvenance,
+            onScoreInfo = openGuide,
+            onChargeTap = { showChargeBreakdown = true },
+            modifier = Modifier.fillMaxWidth().staggeredAppear(1),
+        )
         }
 
         // LIVE SESSIONS (beta): the compact "Start session · BETA" entry, directly under the hero. Today
@@ -2091,6 +2080,7 @@ private fun ScoreHeroRow(
     // A1 (#514/#706): tapping the Charge ring opens the breakdown sheet. A small chevron cue overlays the
     // ring's bottom edge INSIDE the ring frame, so it adds no stacked height (the #762 self-sizing parity).
     onChargeTap: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val recovery = day?.recovery
     // Prefer the live in-progress Effort for today, but never BELOW the day's already-earned strain
@@ -2113,19 +2103,12 @@ private fun ScoreHeroRow(
     // gate. A carried Charge counts as data (its dimmed vessel should slosh like the Rest one).
     val animated = recovery != null || strain != null || restScore != null || lastScoredCharge != null
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Metrics.cardRadius)),
-    ) {
-        // iOS parity: the hero rings float DIRECTLY on the SCREEN-level day-cycle scene (the scaffold's
-        // topBackground), not on any per-hero atmosphere or the old scenic indigo gradient, matching
-        // TodayView, which moved the scene to a screen-level SceneScreenBackground and dropped the
-        // per-hero scene/ScenicHeroBackground.
+    Box(modifier = modifier.fillMaxWidth()) {
+        // Rings float on the page — no outer rectangle / frosted hero card.
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = Metrics.gap, vertical = Metrics.space18),
+                .padding(vertical = Metrics.space12),
         ) {
             // iOS parity (TodayView.scoreHeroRow): three EQUAL rings in CHARGE · EFFORT · REST order, no
             // enlarged centre, filling the width as one balanced row. Ring stroke 0.10 (WHOOP weight).

@@ -101,59 +101,20 @@ fun Modifier.frostedCardSurface(
     cornerRadius: Dp = Metrics.cardRadius,
     washStrength: Float = 1f,
 ): Modifier = this
-    // Elevation idiom: DARK is flat (the hairline + hue carry the edge). LIGHT raises the white card
-    // off the warm-paper canvas with a soft drop shadow — the hairline alone is too faint on paper.
-    .then(
-        if (Palette.isLight)
-            Modifier.shadow(elevation = 6.dp, shape = RoundedCornerShape(cornerRadius), clip = false)
-        else Modifier
-    )
+    // Flat Boop surfaces — solid fill + hairline, no gradient wash / shadow shading.
     .drawBehind {
-    val radiusPx = cornerRadius.toPx()
-    val corner = androidx.compose.ui.geometry.CornerRadius(radiusPx, radiusPx)
-
-    if (tint == null) {
-        // NEUTRAL card (iOS FrostedCardSurface tint == nil): a FLAT raised surface — no vertical
-        // bevel gradient, no accent wash, and a PLAIN hairline border (no accent bias).
+        val radiusPx = cornerRadius.toPx()
+        val corner = androidx.compose.ui.geometry.CornerRadius(radiusPx, radiusPx)
         drawRoundRect(
             color = Palette.surfaceRaised,
             cornerRadius = corner,
         )
-        drawRoundRect(
-            color = Palette.hairline,
-            cornerRadius = corner,
-            style = Stroke(width = 1.dp.toPx()),
-        )
-    } else {
-        // TINTED card (iOS parity, 2026-06-23 "synthesis has the old blue style"): a FLAT raised
-        // surface — the SAME WHOOP grey as the neutral card, NO navy bevel gradient — carrying only a
-        // whisper of the domain tint as a diagonal hue wash so it stays in the grey family.
-        // 1) Flat raised fill — identical to the neutral card.
-        drawRoundRect(
-            color = Palette.surfaceRaised,
-            cornerRadius = corner,
-        )
-        // 2) Faint diagonal accent hue wash over the flat fill (matches iOS FrostedCardSurface ~0.05).
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                colorStops = arrayOf(
-                    0.0f to tint.copy(alpha = 0.05f * washStrength),
-                    0.5f to tint.copy(alpha = 0.015f * washStrength),
-                    1.0f to Color.Transparent,
-                ),
-                start = Offset(0f, 0f),
-                end = Offset(size.width, size.height),
-            ),
-            cornerRadius = corner,
-        )
-        // 3) Plain 1px hairline (no accent bias) — matches the neutral card.
         drawRoundRect(
             color = Palette.hairline,
             cornerRadius = corner,
             style = Stroke(width = 1.dp.toPx()),
         )
     }
-}
 
 // MARK: - NoopCard — the one card surface (Titanium & Gold frosted card, 16dp radius)
 //
@@ -583,12 +544,8 @@ fun <T> SegmentedPillControl(
             // on dark; a flat blue accent + white ink on light (so light selection matches the blue
             // chrome, not gold). Unselected stays clear with tertiary text; disabled dims further.
             val pillShape = RoundedCornerShape(50)
-            val pillBg = if (selected) {
-                if (Palette.isLight) Modifier.background(Palette.accent, pillShape)
-                else Modifier.background(Brush.linearGradient(*Palette.goldGradient.toTypedArray()), pillShape)
-            } else {
-                Modifier
-            }
+            // Flat Boop selection — solid accent fill, no gold gradient wash.
+            val pillBg = if (selected) Modifier.background(Palette.accent, pillShape) else Modifier
             Box(
                 modifier = Modifier
                     // Fill the track height so the pill's inset is equal top/bottom/left/right.
@@ -603,7 +560,6 @@ fun <T> SegmentedPillControl(
                     text = label(item),
                     style = NoopType.captionNumber,
                     color = when {
-                        selected && Palette.isLight -> androidx.compose.ui.graphics.Color.White
                         selected -> Palette.goldDeepText
                         !itemEnabled -> Palette.textTertiary.copy(alpha = 0.45f)
                         else -> Palette.textTertiary
@@ -659,10 +615,6 @@ fun BevelGauge(
         animationSpec = tween(Motion.durationSlow, easing = Motion.drawIn),
         label = "ringFill",
     )
-    // Outer bloom — a faint, STATIC glow. The breathing pulse is gone (matching iOS): it sits calm so
-    // the ring reads flat/Material, not glowing. Strength tracks the iOS bloomOpacity (0.05 + 0.13·frac)
-    // — a restrained additive halo, well down from the old (0.16 + 0.40·frac) pulse.
-    val bloomOpacity = 0.05f + 0.13f * frac
     val sweep = Brush.sweepGradient(*stops.toTypedArray())
 
     Box(
@@ -672,46 +624,6 @@ fun BevelGauge(
         Box(
             modifier = Modifier
                 .size(diameter)
-                // PERF (#scroll-jank): the frosted inner disc + its hairline rim — and crucially the
-                // radial-gradient disc Brush they need — are STATIC (they read neither the animated
-                // fraction nor any scroll state) yet shared one drawBehind with the fraction-driven arc,
-                // so they were re-issued every animation/scroll frame. Hoist JUST the disc + rim into
-                // drawWithCache (keyed on the implicit size + lineWidth + the palette tones) so they
-                // rasterise once and replay as a texture. The track stays in the per-frame layer because
-                // the original z-order is disc → rim → BLOOM → track → fill arc → cap, i.e. the bloom (a
-                // fraction-driven, per-frame layer) sits BETWEEN the rim and the track — caching the track
-                // above the bloom would move it over the bloom and change the pixels. The remaining
-                // per-frame layer is just the track + bloom + fill arc + cap + core (a handful of
-                // drawArc/drawCircle calls), no longer the expensive radial disc. Pixel-identical.
-                .drawWithCache {
-                    val stroke = lineWidth.toPx()
-                    val radius = (min(size.width, size.height) - stroke) / 2f
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val discRadius = (radius - stroke * 0.4f).coerceAtLeast(1f)
-                    val discBrush = Brush.radialGradient(
-                        colors = listOf(
-                            Palette.surfaceInset.copy(alpha = 0f),
-                            Palette.surfaceInset.copy(alpha = 0.55f),
-                        ),
-                        center = center,
-                        radius = radius,
-                    )
-                    val rimStroke = Stroke(width = 1.dp.toPx())
-                    onDrawBehind {
-                        // Frosted inner disc behind the arc — a glassy "well".
-                        drawCircle(brush = discBrush, radius = discRadius, center = center)
-                        // Faint hairline rim around the inner disc (iOS innerDisc strokeBorder hairline 0.5).
-                        drawCircle(
-                            color = Palette.hairline.copy(alpha = 0.5f),
-                            radius = discRadius,
-                            center = center,
-                            style = rimStroke,
-                        )
-                    }
-                }
-                // The per-frame layer: bloom + full-span track + fill arc + end cap + brand core, in the
-                // ORIGINAL order. Drawn AFTER (over) the cached disc/rim. Reads animatedFraction so it
-                // re-issues per frame, but it is only a few drawArc/drawCircle calls now.
                 .drawBehind {
                     val stroke = lineWidth.toPx()
                     val radius = (min(size.width, size.height) - stroke) / 2f
@@ -720,26 +632,7 @@ fun BevelGauge(
                     val arcSize = Size(radius * 2f, radius * 2f)
                     val sweepStroke = Stroke(width = stroke, cap = StrokeCap.Round)
 
-                    // Outer bloom — a soft, lower-opacity wide arc (drawn first, under the track).
-                    // A glow only reads on the dark canvas; on the white light card it just smears the
-                    // edge, so it's suppressed there (the deepened arc carries the ring on its own).
-                    // Drawn at the restrained, static [bloomOpacity] (≈0.05–0.18) — crisp, not glowing.
-                    if (animatedFraction > 0.001f && !Palette.isLight) {
-                        drawArc(
-                            brush = sweep,
-                            startAngle = startDeg,
-                            sweepAngle = spanDeg * animatedFraction,
-                            useCenter = false,
-                            topLeft = topLeft,
-                            size = arcSize,
-                            style = Stroke(width = stroke * 1.15f, cap = StrokeCap.Round),
-                            alpha = bloomOpacity,
-                        )
-                    }
-
-                    // Full-span track — the carved inset "well" the arc sits in (iOS: solid surfaceInset,
-                    // full opacity, same round cap), not a faint hairline. Stays here (over the bloom,
-                    // under the fill arc) to preserve the exact original z-order.
+                    // Flat track + fill — no frosted disc / bloom / gloss.
                     drawArc(
                         color = Palette.surfaceInset,
                         startAngle = startDeg,
@@ -750,7 +643,6 @@ fun BevelGauge(
                         style = sweepStroke,
                     )
 
-                    // Filled gradient arc.
                     if (animatedFraction > 0.001f) {
                         drawArc(
                             brush = sweep,
@@ -761,23 +653,14 @@ fun BevelGauge(
                             size = arcSize,
                             style = sweepStroke,
                         )
-
-                        // Clean Material end-cap (iOS BevelGauge.endCap): a single small tipCore dot with a
-                        // faint tip-coloured overlay — half the old size, no saturated full-colour disc and
-                        // no hard white centre pip ("the dot" the maintainer flagged).
                         val tipAngle = Math.toRadians((startDeg + spanDeg * animatedFraction).toDouble())
                         val bead = Offset(
                             center.x + radius * cos(tipAngle).toFloat(),
                             center.y + radius * sin(tipAngle).toFloat(),
                         )
-                        drawCircle(color = Palette.tipCore, radius = stroke * 0.35f, center = bead)
-                        drawCircle(color = tipColor.copy(alpha = 0.35f), radius = stroke * 0.35f, center = bead)
+                        drawCircle(color = tipColor, radius = stroke * 0.35f, center = bead)
                     }
 
-                    // Brand glyph core: a small solid gold dot at the very centre — but ONLY in the
-                    // glyph-only lock-up (logo / nav). When a number is shown the dot sits behind the
-                    // digits and muddies them (community feedback at the v3 launch), so suppress it
-                    // whenever showsLabel — leaving a clean ring + number + micro-NOOP wordmark.
                     if (coreDot != null && !showsLabel) {
                         drawCircle(color = coreDot, radius = stroke * 0.40f, center = center)
                     }
@@ -935,16 +818,7 @@ fun GlowRing(
                     // rings the maintainer flagged. Below the threshold we show just the clean full-circle
                     // track — exactly like the iOS GlowRing's empty state.
                     if (animFraction > 0.001f) {
-                        // Tight glow — a wider, low-alpha arc under the crisp one (minSdk-safe, no RenderEffect).
-                        // Gated on the dark canvas only, mirroring iOS AdditiveBloom hiding on the light field
-                        // (on white it just smears the edge); the crisp arc carries the ring on its own there.
-                        if (!Palette.isLight) {
-                            drawArc(
-                                color = color.copy(alpha = 0.45f), startAngle = -90f, sweepAngle = sweep, useCenter = false,
-                                topLeft = tl, size = arcSize, style = Stroke(width = stroke * 1.5f, cap = StrokeCap.Round),
-                            )
-                        }
-                        // The crisp, solid arc — from 12 o'clock clockwise.
+                        // Crisp solid arc only — no glow/bloom underlay.
                         drawArc(
                             color = color, startAngle = -90f, sweepAngle = sweep, useCenter = false,
                             topLeft = tl, size = arcSize, style = Stroke(width = stroke, cap = StrokeCap.Round),
@@ -1148,7 +1022,7 @@ fun ScreenScaffold(
         Column(
             modifier = columnModifier
                 .verticalScroll(rememberScrollState())
-                .padding(start = 28.dp, end = 28.dp, top = topPadding, bottom = 28.dp),
+                .padding(start = Metrics.screenPadding, end = Metrics.screenPadding, top = topPadding, bottom = 28.dp),
             // #765: one shared inter-card spacing token (was a bare `20.dp`), so the eager + lazy scaffolds
             // and every screen through them keep the SAME uniform gap between top-level cards.
             verticalArrangement = Arrangement.spacedBy(Metrics.screenRowSpacing),
@@ -1293,7 +1167,7 @@ fun LazyScreenScaffold(
     val list: @Composable () -> Unit = {
         LazyColumn(
             modifier = listModifier,
-            contentPadding = PaddingValues(start = 28.dp, top = topPadding, end = 28.dp, bottom = 28.dp),
+            contentPadding = PaddingValues(start = Metrics.screenPadding, top = topPadding, end = Metrics.screenPadding, bottom = 28.dp),
             // #765: the shared inter-card spacing token by default (Today/Explore + the eager screens share
             // one uniform card rhythm); a caller may pass a tighter [rowSpacing] (the liquid Today does, for
             // the iOS-compact section rhythm).

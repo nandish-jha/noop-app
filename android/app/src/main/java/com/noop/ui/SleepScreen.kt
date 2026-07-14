@@ -1232,12 +1232,8 @@ private fun StageBreakdownRow(stage: String, minutes: Double, total: Double, col
 }
 
 /**
- * The hero hypnogram strip plus an optional onset · midpoint · wake time axis. Mirrors the Swift
- * Hypnogram(showsTimeAxis:): a proportional stage strip with a per-segment WIDTH floor (so a brief
- * stage — especially a short Awake blip — reads as a rounded block, not a hairline tick), three
- * faint vertical hairlines at frac 0 / 0.5 / 1.0, and a clock-label row underneath. The axis only
- * appears when the session supplies onset/wake timestamps; otherwise this is just the floored strip.
- * Presentation-only — the segment weights and stage→colour mapping are unchanged.
+ * Stepped sleep-stage timeline (Awake → REM → Light → Deep lanes) with optional onset · mid · wake axis.
+ * Replaces the old sausage-strip hypnogram. StageBreakdownRows footer stays unchanged.
  */
 @Composable
 private fun HypnogramWithAxis(
@@ -1246,50 +1242,48 @@ private fun HypnogramWithAxis(
     wakeTs: Long?,
 ) {
     val showsAxis = onsetTs != null && wakeTs != null
+    // Lane order top→bottom: Awake, REM, Light, Deep (classic hypnogram stacking).
+    fun laneIndex(name: String): Int = when (name.trim().lowercase()) {
+        "wake", "awake" -> 0
+        "rem" -> 1
+        "light" -> 2
+        "deep" -> 3
+        else -> 2
+    }
     Column(verticalArrangement = Arrangement.spacedBy(Metrics.space6)) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(Metrics.stageStripHeight)) {
+        Canvas(modifier = Modifier.fillMaxWidth().height(88.dp)) {
             val w = size.width
             val h = size.height
             if (w <= 0f || h <= 0f) return@Canvas
-
-            // Inset well so the strip reads as a recessed track (matches the shared Hypnogram).
-            drawLine(
-                color = Palette.surfaceInset,
-                start = Offset(0f, h / 2f),
-                end = Offset(w, h / 2f),
-                strokeWidth = h,
-                cap = StrokeCap.Round,
-            )
-
+            val laneH = h / 4f
+            val barH = laneH * 0.58f
+            // Subtle lane guides
+            for (i in 0..3) {
+                val y = laneH * (i + 0.5f)
+                drawLine(
+                    color = Palette.hairline.copy(alpha = 0.55f),
+                    start = Offset(0f, y),
+                    end = Offset(w, y),
+                    strokeWidth = 1f,
+                )
+            }
             val weights = stages.map { it.second }.map { if (it.isFinite() && it > 0f) it else 0f }
             val total = weights.sum()
             if (stages.isEmpty() || total <= 0f) return@Canvas
-
-            // WIDTH floor: a segment narrower than this reads as a tick. Floor it to ~one strip-height
-            // square so short stages are legible blocks (the Android analogue of the Swift band-min
-            // thickness). Stretches sub-floor stages slightly; proportions of normal stages are intact.
-            val minSegW = h
-            val gap = if (stages.size > 1) 1.5f else 0f
             var x = 0f
             stages.forEachIndexed { i, (name, _) ->
-                val rawW = w * (weights[i] / total)
-                if (rawW <= 0f) return@forEachIndexed
-                val segW = maxOf(rawW, minSegW)
-                val drawW = (segW - if (i < stages.size - 1) gap else 0f).coerceAtLeast(0f)
-                if (drawW > 0f) {
-                    val cap = (h / 2f).coerceAtMost(drawW / 2f)
-                    drawLine(
-                        color = stageColorFor(name),
-                        start = Offset(x + cap, h / 2f),
-                        end = Offset((x + drawW - cap).coerceAtLeast(x + cap), h / 2f),
-                        strokeWidth = h,
-                        cap = StrokeCap.Round,
-                    )
-                }
+                val segW = w * (weights[i] / total)
+                if (segW <= 0f) return@forEachIndexed
+                val lane = laneIndex(name)
+                val top = laneH * lane + (laneH - barH) / 2f
+                drawRoundRect(
+                    color = stageColorFor(name),
+                    topLeft = Offset(x, top),
+                    size = Size(segW.coerceAtLeast(1.5f), barH),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(barH / 2f, barH / 2f),
+                )
                 x += segW
             }
-
-            // Time-axis vertical hairlines: onset · midpoint · wake.
             if (showsAxis) {
                 listOf(0f, 0.5f, 1f).forEach { frac ->
                     val hx = w * frac

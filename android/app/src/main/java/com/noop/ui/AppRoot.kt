@@ -64,6 +64,11 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.MoreHoriz
+import androidx.compose.material.icons.rounded.ShowChart
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -711,11 +716,11 @@ private val rootPagerTabs = listOf(
 )
 
 private val barLeadingTabs = listOf(
-    BarTab(Destination.Today, Icons.Outlined.GridView, R.string.nav_today),
-    BarTab(Destination.Sleep, Icons.Filled.Bedtime, R.string.nav_sleep),
+    BarTab(Destination.Today, Icons.Rounded.Home, R.string.nav_today),
+    BarTab(Destination.Sleep, Icons.Rounded.Bedtime, R.string.nav_sleep),
 )
 private val barTrailingTabs = listOf(
-    BarTab(Destination.Trends, Icons.AutoMirrored.Filled.TrendingUp, R.string.nav_trends),
+    BarTab(Destination.Trends, Icons.Rounded.ShowChart, R.string.nav_trends),
 )
 
 @Composable
@@ -737,9 +742,9 @@ private fun GlassBottomBar(
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(22.dp),
-            color = Palette.surfaceBase.copy(alpha = 0.85f),
-            border = BorderStroke(1.dp, Palette.accent.copy(alpha = 0.14f)),
-            shadowElevation = 6.dp,
+            color = Palette.surfaceBase.copy(alpha = 0.92f),
+            border = BorderStroke(1.dp, Palette.accentHover.copy(alpha = 0.14f)),
+            shadowElevation = 0.dp,
         ) {
             Row(
                 modifier = Modifier
@@ -768,7 +773,7 @@ private fun GlassBottomBar(
                     )
                 }
                 DockNavTab(
-                    icon = Icons.Filled.MoreHoriz,
+                    icon = Icons.Rounded.MoreHoriz,
                     label = stringResource(R.string.nav_more),
                     active = moreActive,
                     modifier = Modifier.weight(1f),
@@ -842,7 +847,7 @@ private fun DockActionButton(onClick: () -> Unit) {
             shape = RoundedCornerShape(16.dp),
             color = Palette.textPrimary,
             border = BorderStroke(1.5.dp, Palette.accent.copy(alpha = 0.55f)),
-            shadowElevation = 6.dp,
+            shadowElevation = 0.dp,
             modifier = Modifier
                 .size(50.dp)
                 .graphicsLayer {
@@ -855,7 +860,7 @@ private fun DockActionButton(onClick: () -> Unit) {
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
-                    Icons.Filled.Add,
+                    Icons.Rounded.Add,
                     contentDescription = null,
                     tint = Palette.surfaceBase,
                     modifier = Modifier.size(26.dp),

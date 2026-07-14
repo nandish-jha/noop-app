@@ -744,18 +744,13 @@ private val HEALTH_HERO_FILL: Color =
     Color(red = 13f / 255f, green = 14f / 255f, blue = 20f / 255f, alpha = 0.80f)
 private val HEALTH_HERO_RADIUS: Dp = 26.dp
 
-/** Wrap a hero's content in the frosted liquid glass surface so it floats over the sky backdrop. Applied
- *  to the HERO cards only (Fitness Age, Vitality), matching the pilot's heroCard: the content sits DIRECTLY
- *  in the translucent box (no inner NoopCard surface to double up on the glass), padded like a card. */
+/** Hero content without an outer frosted rectangle — flat on the page like Boop. */
 @Composable
 private fun LiquidHeroCard(content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(HEALTH_HERO_RADIUS))
-            .background(HEALTH_HERO_FILL)
-            .border(1.dp, Color.White.copy(alpha = 0.11f), RoundedCornerShape(HEALTH_HERO_RADIUS))
-            .padding(Metrics.cardPadding),
+            .padding(vertical = Metrics.space8),
     ) {
         content()
     }
@@ -790,9 +785,8 @@ private fun HealthHeroVessel(
         CountUpText(
             value = value,
             format = format,
-            style = NoopType.number(numberSp, weight = FontWeight.Bold)
-                .copy(shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(0f, 1f), blurRadius = 6f)),
-            color = Color.White,
+            style = NoopType.number(numberSp, weight = FontWeight.Bold),
+            color = Palette.textPrimary,
             modifier = Modifier.clearAndSetSemantics {},
         )
     }

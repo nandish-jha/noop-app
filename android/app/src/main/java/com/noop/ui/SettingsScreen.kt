@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Brightness6
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Favorite
@@ -356,6 +357,8 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
     // that feeds Charge from tonight onward; the standing analyze loop picks it up on its next pass.
     // Fixes a baseline poisoned by a bad first week (worn sick, or early nights that anchored too high).
     var showRecalibrateConfirm by remember { mutableStateOf(false) }
+    var showClearImportedConfirm by remember { mutableStateOf(false) }
+    var clearImportedBusy by remember { mutableStateOf(false) }
 
     // Steps-estimate calibration screen (WHOOP 4.0), reached from the Profile card's "Steps estimate"
     // tap-through. Mirrors the macOS StepsCalibrationSheet: honest explainer + current fit + a recent
@@ -1938,7 +1941,57 @@ fun SettingsScreen(vm: AppViewModel, onOpenTestCentre: () -> Unit = {}) {
                     text = "Importing overwrites everything currently on this phone. Your old data is kept in a side file just in case. NOOP needs a relaunch for an import to take effect. " +
                         "Export CSV writes a WHOOP-format zip of your days, sleeps, workouts and journal that re-imports into NOOP on Android or Mac. On-device computed rows are marked APPROXIMATE in its Source column; the .noopbak backup stays the lossless restore path.",
                 )
+
+                NoopButton(
+                    text = "Remove imported history…",
+                    kind = NoopButtonKind.Destructive,
+                    fullWidth = true,
+                    enabled = !backupBusy && !clearImportedBusy,
+                    onClick = { showClearImportedConfirm = true },
+                )
+                NoteRow(
+                    icon = Icons.Filled.DeleteOutline,
+                    iconTint = Palette.statusCritical,
+                    text = "Clears data from WHOOP exports, Apple Health, and Health Connect. Theme, preferences, and pairings stay. This cannot be undone.",
+                )
             }
+        }
+
+        if (showClearImportedConfirm) {
+            AlertDialog(
+                onDismissRequest = { if (!clearImportedBusy) showClearImportedConfirm = false },
+                title = {
+                    Text("Remove all imported history?", style = NoopType.title2, color = Palette.textPrimary)
+                },
+                text = {
+                    Text(
+                        "This permanently deletes metrics, sleeps, and workouts from WHOOP CSV export, Apple Health, and Health Connect. Settings and appearance preferences are not touched.",
+                        style = NoopType.body,
+                        color = Palette.textSecondary,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            clearImportedBusy = true
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) { vm.clearImportedHistory() }
+                                    Toast.makeText(context, "Imported history removed.", Toast.LENGTH_LONG).show()
+                                } finally {
+                                    clearImportedBusy = false
+                                    showClearImportedConfirm = false
+                                }
+                            }
+                        },
+                    ) { Text("Remove", style = NoopType.body, color = Palette.statusCritical) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearImportedConfirm = false }) {
+                        Text("Cancel", style = NoopType.body, color = Palette.textSecondary)
+                    }
+                },
+            )
         }
 
         // --- About ---

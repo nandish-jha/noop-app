@@ -147,6 +147,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun deletePairedDeviceData(id: String) = noopApp.deviceRegistry.deleteDeviceData(id)
 
     /**
+     * Wipe history from known IMPORT sources (WHOOP CSV / Apple Health / Health Connect / computed
+     * under those namespaces). Keeps SharedPreferences settings, theme, and paired-device registry rows.
+     */
+    suspend fun clearImportedHistory() {
+        for (id in listOf("apple-health", "health-connect", "my-whoop", "my-whoop-noop")) {
+            noopApp.deviceRegistry.deleteDeviceData(id)
+        }
+    }
+
+    /**
      * A DISCOVERY-ONLY [StandardHrSource] for the Add-a-strap wizard. It runs its OWN scan and never
      * connects or persists here — the [SourceCoordinator] owns connection once a strap becomes active.
      * Both closures are no-ops; the wizard only reads its `discovered` / `scanning` StateFlows. Mirrors
