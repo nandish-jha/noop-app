@@ -684,31 +684,24 @@ private fun TypeStep(onPick: (DeviceType) -> Unit) {
         TypeRow(Icons.Filled.Watch, DeviceType.Whoop4.title, "NOOP's primary, fully-supported band") {
             onPick(DeviceType.Whoop4)
         }
-        TypeRow(Icons.Filled.FavoriteBorder, DeviceType.HrStrap.title, "Polar, Wahoo, Coospo, Garmin HRM, Amazfit Helio broadcast") {
-            onPick(DeviceType.HrStrap)
-        }
-        TypeRow(Icons.AutoMirrored.Filled.DirectionsRun, DeviceType.GymEquipment.title, "Treadmill, indoor bike, rower or cross-trainer (Bluetooth FTMS)") {
-            onPick(DeviceType.GymEquipment)
-        }
+        WhoopOnlyNote()
+    }
+}
 
-        // EXPERIMENTAL tier - clearly labelled, opt-in, best-effort. Each is honest about what it can
-        // actually read; none fabricates data.
-        Overline("Experimental", modifier = Modifier.padding(top = 8.dp))
-        ExperimentalTierNote()
-        TypeRow(Icons.Filled.Circle, DeviceType.Oura.title, "Take over your ring locally. Beta. This replaces the Oura app.") {
-            onPick(DeviceType.Oura)
-        }
-        TypeRow(Icons.Filled.GraphicEq, DeviceType.Amazfit.title, "Incl. Helio. Live heart rate where the band exposes it. Help us test.") {
-            onPick(DeviceType.Amazfit)
-        }
-        TypeRow(Icons.Filled.GraphicEq, DeviceType.MiBand.title, "Live heart rate on bands that don't need pairing. Help us test.") {
-            onPick(DeviceType.MiBand)
-        }
-        TypeRow(Icons.Filled.Watch, DeviceType.Garmin.title, "Uses the watch's Broadcast Heart Rate. We'll show you how.") {
-            onPick(DeviceType.Garmin)
-        }
-
-        WhoopFirstNote()
+@Composable
+private fun WhoopOnlyNote() {
+    Row(
+        modifier = Modifier.padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Icon(Icons.Filled.FavoriteBorder, contentDescription = null, tint = Palette.textTertiary, modifier = Modifier.size(16.dp))
+        Text(
+            "NOOP pairs with WHOOP straps only. Force-stop the official WHOOP app briefly so the strap " +
+                "can bond; once connected, NOOP reopens WHOOP for you.",
+            style = NoopType.footnote,
+            color = Palette.textTertiary,
+        )
     }
 }
 
@@ -809,9 +802,9 @@ private fun OnePhoneWarningCard() {
                 color = Palette.statusWarning,
             )
             Text(
-                "A WHOOP strap bonds to a single device. While it's connected to NOOP it won't stream " +
-                    "to the official WHOOP app, and the other way round. It's reversible: pair it in the " +
-                    "other app whenever you want it back.",
+                "A WHOOP strap bonds to one app at a time. Force-stop the official WHOOP app briefly so " +
+                    "NOOP can connect; once the strap is bonded, NOOP reopens WHOOP automatically. If " +
+                    "WHOOP grabs the strap again, Force-stop it and reconnect here.",
                 style = NoopType.footnote,
                 color = Palette.statusWarning,
             )
@@ -901,13 +894,13 @@ private fun PrepStep(type: DeviceType, onScan: () -> Unit) {
 private fun prepInstructions(type: DeviceType): List<String> = when (type) {
     DeviceType.Whoop4 -> listOf(
         "Put your WHOOP 4.0 on your wrist and make sure it's awake.",
-        "Make sure it's NOT connected to the official WHOOP app right now.",
-        "NOOP will look for it nearby.",
+        "Force-stop the official WHOOP app briefly so the strap is free to bond.",
+        "NOOP will look for it nearby, then reopen WHOOP once connected.",
     )
     DeviceType.Whoop5MG -> listOf(
-        "WHOOP 5.0 / MG bonds to one device at a time, so unpair it from the official WHOOP app first.",
-        "Put the band into pairing mode, on your wrist and awake.",
-        "NOOP will look for it nearby.",
+        "Force-stop the official WHOOP app briefly — 5.0 / MG bonds to one app at a time.",
+        "Put the band into pairing mode (LEDs flash blue), on your wrist and awake.",
+        "NOOP will look for it nearby, then reopen WHOOP once connected.",
     )
     DeviceType.HrStrap -> listOf(
         "Wake your strap. Put it on, or dampen the contacts.",

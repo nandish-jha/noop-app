@@ -6,9 +6,7 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
-import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -50,7 +48,7 @@ fun ConnectionHelp(viewModel: AppViewModel, modifier: Modifier = Modifier) {
     val permGranted = perms.all {
         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
     }
-    val whoopInstalled = remember { packageInstalled(context, WHOOP_PACKAGE) }
+    val whoopInstalled = remember { WhoopAppHandoff.isInstalled(context) }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -86,11 +84,12 @@ fun ConnectionHelp(viewModel: AppViewModel, modifier: Modifier = Modifier) {
             HelpStep(
                 done = !whoopInstalled,
                 title = "Close the official WHOOP app",
-                body = "Your strap only pairs with ONE app at a time. If the WHOOP app is connected, " +
-                    "NOOP can't reach the strap. Force stop it (swiping it out of recents isn't enough).",
-                actionLabel = if (whoopInstalled) "Open WHOOP app, then Force stop" else "WHOOP app isn't installed",
+                body = "Your strap only pairs with ONE app at a time. Force-stop the WHOOP app briefly " +
+                    "(swiping it out of recents isn't enough) so NOOP can bond. After NOOP connects, " +
+                    "it reopens WHOOP for you automatically.",
+                actionLabel = if (whoopInstalled) "Open WHOOP app info (Force stop)" else "WHOOP app isn't installed",
                 enabled = whoopInstalled,
-                onAction = { openAppInfo(context, WHOOP_PACKAGE) },
+                onAction = { WhoopAppHandoff.openAppInfo(context) },
             )
             HelpStep(
                 done = btOn,
@@ -150,21 +149,5 @@ private fun HelpStep(
                 Text(actionLabel, style = NoopType.footnote)
             }
         }
-    }
-}
-
-private const val WHOOP_PACKAGE = "com.whoop.android"
-
-/** True if [pkg] is installed (used to detect the official WHOOP app). */
-private fun packageInstalled(ctx: Context, pkg: String): Boolean =
-    try { ctx.packageManager.getPackageInfo(pkg, 0); true } catch (e: Exception) { false }
-
-/** Open an installed app's info screen (where the user can tap Force stop). */
-private fun openAppInfo(ctx: Context, pkg: String) {
-    runCatching {
-        ctx.startActivity(
-            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", pkg, null))
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
     }
 }

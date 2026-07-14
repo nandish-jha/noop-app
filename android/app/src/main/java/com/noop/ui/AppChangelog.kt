@@ -45,6 +45,7 @@ object AppChangelog {
                 "**Flat controls.** Buttons and segment selectors drop gradient/shade washes; liquid gauges everywhere are flat rings and bars.",
                 "**Sleep stages chart.** The stage timeline is a four-lane hypnogram; REM / Deep / Light / Awake rows underneath stay the same.",
                 "**Clear imported history.** Settings → Backup & restore can remove WHOOP export / Apple Health / Health Connect history without touching preferences.",
+                "**WHOOP-only pairing.** Add Device is WHOOP straps only. Force-stop the official WHOOP app briefly to bond; once NOOP connects, it reopens WHOOP automatically.",
             ),
         ),
         Release(

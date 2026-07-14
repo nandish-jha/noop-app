@@ -106,8 +106,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun addPairedDevice(row: com.noop.data.PairedDeviceRow) = noopApp.deviceRegistry.add(row)
 
     /** Make [id] the single active device, then tell the [SourceCoordinator] so it swaps the live source
-     *  (a no-op for a single-WHOOP install). Mirrors macOS DevicesView's `registry.setActive`. */
+     *  (a no-op for a single-WHOOP install). WHOOP-only: non-WHOOP activations are refused. */
     suspend fun setActiveDevice(id: String) {
+        val devices = noopApp.deviceRegistry.all()
+        if (!com.noop.ble.SourceCoordinator.isWhoop(id, devices)) return
         noopApp.deviceRegistry.setActive(id)
         noopApp.sourceCoordinator.onActiveDeviceChanged(id)
         refreshActiveDeviceName()
@@ -572,6 +574,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // a disabled alarm doesn't disarm on every reconnect.
         viewModelScope.launch {
             var lastBonded = false
+            var lastEncryptedBond = false
             ble.state.collect { state ->
                 state.heartRate?.let { ingestHr(it) }
                 // #39 parity with iOS: clear the smoothed median on a true disconnect (no HR AND no R-R) so the
@@ -588,7 +591,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     // e.g. after an APK update restarts the process.
                     ble.lastDeviceAddress?.let { NoopPrefs.setLastDevice(appContext, it, _selectedModel.value) }
                 }
+                // Original companion handoff: Force-stop WHOOP briefly so NOOP can bond; once the secure
+                // link is up, reopen the official WHOOP app so it isn't left permanently killed.
+                if (state.encryptedBond && !lastEncryptedBond) {
+                    viewModelScope.launch {
+                        delay(2_500)
+                        if (ble.state.value.encryptedBond) {
+                            WhoopAppHandoff.launchIfInstalled(appContext)
+                        }
+                    }
+                }
                 lastBonded = state.bonded
+                lastEncryptedBond = state.encryptedBond
             }
         }
         // Multi-WHOOP identity adoption: feed the connected strap's BLE address into the coordinator so the

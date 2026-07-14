@@ -496,7 +496,7 @@ private fun DeviceActionsMenu(
                     }
                 }
             } else {
-                if (!isActive) {
+                if (!isActive && SourceCoordinator.isWhoop(device)) {
                     MenuItem("Make active", Icons.Filled.Bolt) { onOpenChange(false); onMakeActive() }
                 }
                 MenuItem("Rename", Icons.Filled.Edit) { onOpenChange(false); onRename() }
@@ -557,9 +557,8 @@ private fun WhoopFirstFooter() {
             modifier = Modifier.size(16.dp),
         )
         Text(
-            "WHOOP is NOOP's primary, fully-supported band. Other heart-rate straps are an early, " +
-                "in-development addition: they stream live heart rate and HRV, but not WHOOP's deeper " +
-                "sleep and recovery data.",
+            "NOOP pairs with WHOOP straps only. Force-stop the official WHOOP app briefly to bond; " +
+                "once connected, NOOP reopens WHOOP automatically.",
             style = NoopType.footnote,
             color = Palette.textTertiary,
         )
