@@ -25,7 +25,7 @@ object AppChangelog {
      * Bump this when you add a release below. The "What's New" sheet shows automatically when the
      * stored last-seen version is behind this. (Decoupled from the bundle version on purpose.)
      */
-    const val CURRENT_VERSION = "9.0.0"
+    const val CURRENT_VERSION = "9.1.0"
 
     data class Release(
         val version: String,
@@ -36,6 +36,15 @@ object AppChangelog {
 
     /** Newest first. */
     val releases: List<Release> = listOf(
+        Release(
+            version = "9.1.0",
+            title = "Boop type + clearer Menu",
+            date = "July 2026",
+            items = listOf(
+                "**Typography matches Boop.** Inter for UI and Source Serif 4 for titles, with Boop's size and weight scale across the app.",
+                "**Menu reorganized.** Settings, Devices, Data Sources and Notifications sit in a pinned Essentials section, with a search field to find any screen fast.",
+            ),
+        ),
         Release(
             version = "9.0.0",
             title = "Boop chrome polish",

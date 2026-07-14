@@ -13,6 +13,8 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import android.app.Activity
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
@@ -411,76 +413,210 @@ object Metrics {
 
 // MARK: - Typography (Boop match: Inter + Source Serif 4)
 //
-// Boop uses Inter for body/UI and Source Serif 4 for titles. Numeric styles stay
-// tabular via fontFeatureSettings = "tnum".
+// Token sizes/weights/lineHeights are taken from Boop's `boopTypography()` + page header title.
+// Semantic NOOP names map onto those roles so every existing call site picks up Boop sizing.
 
 object NoopType {
-    private val sans = FontFamily(
+    val sans = FontFamily(
         Font(R.font.inter_regular, FontWeight.Normal),
         Font(R.font.inter_medium, FontWeight.Medium),
         Font(R.font.inter_semibold, FontWeight.SemiBold),
         Font(R.font.inter_bold, FontWeight.Bold),
     )
-    private val serif = FontFamily(
+    val serif = FontFamily(
         Font(R.font.source_serif_4, FontWeight.Normal),
         Font(R.font.source_serif_4_medium, FontWeight.Medium),
         Font(R.font.source_serif_4_semibold, FontWeight.SemiBold),
     )
     private val monoFamily = FontFamily.Monospace
 
-    /** Display 64–80 / Bold — big score numbers. */
-    fun display(size: Float = 72f) = TextStyle(
-        fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = size.sp,
-        letterSpacing = displayTracking(size).sp, fontFeatureSettings = "tnum",
+    /** Large score / hero numerals — Inter tabular (not serif display). */
+    fun display(size: Float = 36f) = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Bold,
+        fontSize = size.sp,
+        lineHeight = (size * 1.1f).sp,
+        letterSpacing = displayTracking(size).sp,
+        fontFeatureSettings = "tnum",
     )
 
-    fun displayTracking(size: Float = 72f): Float = -size * 0.04f
+    fun displayTracking(size: Float = 36f): Float = -size * 0.015f
 
-    /** Boop page title (Source Serif 4 SemiBold ~27sp). */
+    /** Boop page header title — Source Serif SemiBold 27 / 32. */
     val pageTitle = TextStyle(
-        fontFamily = serif, fontWeight = FontWeight.SemiBold, fontSize = 27.sp,
+        fontFamily = serif,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 27.sp,
+        lineHeight = 32.sp,
         letterSpacing = (-0.2).sp,
     )
 
-    val title1 = TextStyle(fontFamily = serif, fontWeight = FontWeight.SemiBold, fontSize = 28.sp)
-    val title2 = TextStyle(fontFamily = serif, fontWeight = FontWeight.SemiBold, fontSize = 22.sp)
-    val headline = TextStyle(fontFamily = sans, fontWeight = FontWeight.SemiBold, fontSize = 17.sp)
-    val body = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 15.sp)
-    val subhead = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 13.sp)
-    val caption = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 12.5.sp)
-    val footnote = TextStyle(fontFamily = sans, fontWeight = FontWeight.Normal, fontSize = 11.sp)
-
-    val overline = TextStyle(
-        fontFamily = sans, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-        letterSpacing = 1.4.sp,
+    /** Boop headlineMedium — Source Serif Medium 30 / 34. */
+    val title1 = TextStyle(
+        fontFamily = serif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 30.sp,
+        lineHeight = 34.sp,
     )
 
-    val mono = TextStyle(fontFamily = monoFamily, fontWeight = FontWeight.Normal, fontSize = 13.sp)
+    /** Boop titleLarge — Source Serif Medium 22 / 28. */
+    val title2 = TextStyle(
+        fontFamily = serif,
+        fontWeight = FontWeight.Medium,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+    )
+
+    /** Boop titleMedium — Inter SemiBold 17 / 23. */
+    val headline = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 17.sp,
+        lineHeight = 23.sp,
+        letterSpacing = 0.1.sp,
+    )
+
+    /** Boop bodyMedium — Inter Regular 15 / 21. */
+    val body = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 15.sp,
+        lineHeight = 21.sp,
+        letterSpacing = 0.15.sp,
+    )
+
+    /** Boop bodySmall — Inter Regular 13 / 17. */
+    val subhead = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        lineHeight = 17.sp,
+        letterSpacing = 0.2.sp,
+    )
+
+    /** Boop labelSmall — Inter Medium 12 / 16. */
+    val caption = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.3.sp,
+    )
+
+    /** Secondary fine print — Inter Regular at Boop's smallest label size. */
+    val footnote = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Normal,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.2.sp,
+    )
+
+    /** Section overlines — Inter Medium labelSmall with wider tracking for ALL CAPS. */
+    val overline = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.8.sp,
+    )
+
+    val mono = TextStyle(
+        fontFamily = monoFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        lineHeight = 17.sp,
+    )
 
     fun number(size: Float, weight: FontWeight = FontWeight.SemiBold) = TextStyle(
-        fontFamily = sans, fontWeight = weight, fontSize = size.sp, fontFeatureSettings = "tnum",
+        fontFamily = sans,
+        fontWeight = weight,
+        fontSize = size.sp,
+        lineHeight = (size * 1.2f).sp,
+        fontFeatureSettings = "tnum",
     )
 
     fun mono(size: Float, weight: FontWeight = FontWeight.Normal) = TextStyle(
-        fontFamily = monoFamily, fontWeight = weight, fontSize = size.sp,
+        fontFamily = monoFamily,
+        fontWeight = weight,
+        fontSize = size.sp,
+        lineHeight = (size * 1.3f).sp,
     )
 
-    val bodyNumber = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 15.sp, fontFeatureSettings = "tnum")
-    val captionNumber = TextStyle(fontFamily = sans, fontWeight = FontWeight.Medium, fontSize = 12.sp, fontFeatureSettings = "tnum")
+    val bodyNumber = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 15.sp,
+        lineHeight = 21.sp,
+        fontFeatureSettings = "tnum",
+    )
+    val captionNumber = TextStyle(
+        fontFamily = sans,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        fontFeatureSettings = "tnum",
+    )
     val metricInline = number(15f)
     val chartValue = number(18f)
     val chartValueLarge = number(22f)
     val tileValue = number(24f)
     val tileValueLarge = number(26f)
 
-    const val overlineTracking = 1.4f
+    /** Legacy tracking constant used by scaled overlines. */
+    const val overlineTracking = 0.8f
 }
 
-// MARK: - Material3 bridge
+/** Full Material3 type scale matching Boop's `boopTypography()`. */
+private val NoopMaterialTypography = Typography(
+    displayLarge = TextStyle(
+        fontFamily = NoopType.serif, fontWeight = FontWeight.Medium,
+        fontSize = 52.sp, lineHeight = 56.sp, letterSpacing = (-0.6).sp,
+    ),
+    displayMedium = TextStyle(
+        fontFamily = NoopType.serif, fontWeight = FontWeight.Medium,
+        fontSize = 44.sp, lineHeight = 48.sp, letterSpacing = (-0.4).sp,
+    ),
+    displaySmall = TextStyle(
+        fontFamily = NoopType.serif, fontWeight = FontWeight.Medium,
+        fontSize = 36.sp, lineHeight = 40.sp, letterSpacing = (-0.2).sp,
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = NoopType.serif, fontWeight = FontWeight.Medium,
+        fontSize = 34.sp, lineHeight = 38.sp, letterSpacing = (-0.2).sp,
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = NoopType.serif, fontWeight = FontWeight.Medium,
+        fontSize = 30.sp, lineHeight = 34.sp,
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = NoopType.serif, fontWeight = FontWeight.Medium,
+        fontSize = 26.sp, lineHeight = 30.sp,
+    ),
+    titleLarge = NoopType.title2,
+    titleMedium = NoopType.headline,
+    titleSmall = TextStyle(
+        fontFamily = NoopType.sans, fontWeight = FontWeight.SemiBold,
+        fontSize = 15.sp, lineHeight = 21.sp, letterSpacing = 0.1.sp,
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = NoopType.sans, fontWeight = FontWeight.Normal,
+        fontSize = 17.sp, lineHeight = 25.sp, letterSpacing = 0.15.sp,
+    ),
+    bodyMedium = NoopType.body,
+    bodySmall = NoopType.subhead,
+    labelLarge = TextStyle(
+        fontFamily = NoopType.sans, fontWeight = FontWeight.Medium,
+        fontSize = 16.sp, lineHeight = 22.sp, letterSpacing = 0.1.sp,
+    ),
+    labelMedium = TextStyle(
+        fontFamily = NoopType.sans, fontWeight = FontWeight.Medium,
+        fontSize = 14.sp, lineHeight = 18.sp, letterSpacing = 0.25.sp,
+    ),
+    labelSmall = NoopType.caption,
+)
 
-/** Build the Material3 colour scheme from a token set. Dark/light differ only in the builder used
- *  (which sets sensible defaults for the slots we don't override); the NOOP surfaces are all driven
- *  by `Palette.*` directly, so this only feeds Material components (text fields, switches, etc.). */
+/** Build the Material3 colour scheme from a token set. */
 private fun noopColorScheme(t: PaletteTokens, dark: Boolean): ColorScheme {
     val base = if (dark) darkColorScheme() else lightColorScheme()
     return base.copy(
@@ -502,19 +638,6 @@ private fun noopColorScheme(t: PaletteTokens, dark: Boolean): ColorScheme {
         onError = if (dark) t.surfaceBase else Color(0xFFFFFFFF),
     )
 }
-
-private val NoopMaterialTypography = Typography(
-    displayLarge = NoopType.display(72f),
-    titleLarge = NoopType.title1,
-    titleMedium = NoopType.title2,
-    titleSmall = NoopType.headline,
-    bodyLarge = NoopType.body,
-    bodyMedium = NoopType.subhead,
-    bodySmall = NoopType.caption,
-    labelLarge = NoopType.headline,
-    labelMedium = NoopType.caption,
-    labelSmall = NoopType.overline,
-)
 
 private val NoopShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
@@ -559,6 +682,10 @@ fun NoopTheme(content: @Composable () -> Unit) {
         colorScheme = noopColorScheme(tokens, dark),
         typography = NoopMaterialTypography,
         shapes = NoopShapes,
-        content = content,
-    )
+    ) {
+        // Default bare Text() to Inter bodyMedium — same as Boop's BoopTextTheme.
+        CompositionLocalProvider(LocalTextStyle provides NoopType.body) {
+            content()
+        }
+    }
 }

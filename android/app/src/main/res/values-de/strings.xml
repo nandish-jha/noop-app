@@ -38,10 +38,15 @@
     <string name="nav_test_centre">Testcenter</string>
     <string name="nav_more">Mehr</string>
 
+    <string name="more_group_essentials">Wichtiges</string>
+    <string name="more_group_train">Training &amp; Live</string>
+    <string name="more_group_recovery">Erholung</string>
+    <string name="more_group_health">Gesundheit</string>
     <string name="more_group_insights">Einblicke</string>
-    <string name="more_group_body">Körper</string>
-    <string name="more_group_data">Daten</string>
-    <string name="more_group_app">App</string>
+    <string name="more_group_data">Deine Daten</string>
+    <string name="more_search_hint">Menü durchsuchen</string>
+    <string name="more_search_empty">Keine Treffer</string>
+    <string name="more_subtitle">Einstellungen, Geräte und alle anderen Screens finden</string>
 
     <string name="action_live_hr">Live-HF</string>
     <string name="action_start_workout">Workout starten</string>

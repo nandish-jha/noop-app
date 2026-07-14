@@ -42,10 +42,15 @@
 
     <!-- More-page section headers (DISPLAY only; the stored expand/collapse key stays the English
          literal in MoreSectionPrefs so persistence and iOS parity are unaffected). -->
+    <string name="more_group_essentials">Essentials</string>
+    <string name="more_group_train">Train &amp; live</string>
+    <string name="more_group_recovery">Recovery</string>
+    <string name="more_group_health">Health</string>
     <string name="more_group_insights">Insights</string>
-    <string name="more_group_body">Body</string>
-    <string name="more_group_data">Data</string>
-    <string name="more_group_app">App</string>
+    <string name="more_group_data">Your data</string>
+    <string name="more_search_hint">Search menu</string>
+    <string name="more_search_empty">No matches</string>
+    <string name="more_subtitle">Find settings, devices, and every other screen</string>
 
     <!-- Quick actions on the centre action button. -->
     <string name="action_live_hr">Live HR</string>

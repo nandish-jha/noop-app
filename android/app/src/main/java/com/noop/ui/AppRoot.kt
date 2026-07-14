@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Explore
@@ -64,6 +65,7 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Home
@@ -73,6 +75,9 @@ import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.NavigationDrawerItem
@@ -199,44 +204,86 @@ private enum class Destination(
     }
 }
 
-/** More-page groups, mirroring the iOS More tab exactly: Insights · Body · Data · App. `defaultExpanded`
- *  mirrors the iOS S2 default: Insights + Body open at rest, Data + App collapsed to just their header. */
-// [header] is the STABLE persistence key (stored in SharedPreferences and kept byte-identical to iOS's
-// `more.expandedSections` CSV — see [MoreSectionPrefs]); it must NEVER be localized. [headerRes] is the
-// localized DISPLAY label the More page shows. Decoupling the two lets the label translate without
-// touching the persisted open/closed state or the iOS parity of the stored string.
+/** More-page groups. Persistence key [header] is stable English; [headerRes] is display. */
 private data class DrawerGroup(
     val header: String,
     @StringRes val headerRes: Int,
     val items: List<Destination>,
     val defaultExpanded: Boolean,
+    /** Pinned essentials stay fully open and are not collapsible. */
+    val pinned: Boolean = false,
 )
 
-// Mirrors the iOS RootTabView `moreTab` grouping + order one-for-one. Today / Trends / Sleep are NOT
-// listed (they're bottom-bar tabs, exactly as on iOS). Android-only screens (Vital Signs, Wake Window,
-// Notifications, Devices) are slotted into the matching iOS group.
+/**
+ * Findability-first grouping: Settings / Devices / Data Sources / Notifications stay at the top.
+ * Remaining screens sit in train · recovery · health · insights · your-data, all expanded by default.
+ */
 private val drawerGroups: List<DrawerGroup> = listOf(
-    DrawerGroup("Insights", R.string.more_group_insights, listOf(
-        Destination.InsightsHub, Destination.Intelligence, Destination.Coach,
-        Destination.Insights, Destination.Explore, Destination.Compare,
-    ), defaultExpanded = true),
-    DrawerGroup("Body", R.string.more_group_body, listOf(
-        Destination.Live, Destination.Workouts, Destination.Health, Destination.Hydration,
-        Destination.VitalSigns, Destination.LabBook, Destination.Stress, Destination.Breathe,
-        Destination.Intervals, Destination.Rhythm,
-    ), defaultExpanded = true),
-    DrawerGroup("Data", R.string.more_group_data, listOf(
-        Destination.FusedRecord, Destination.DataSources,
-        Destination.BackupSync, Destination.Devices,
-    ), defaultExpanded = false),
-    DrawerGroup("App", R.string.more_group_app, listOf(
-        Destination.Automations, Destination.SmartAlarm, Destination.Notifications,
-        Destination.TestCentre, Destination.Settings,
-    ), defaultExpanded = false),
+    DrawerGroup(
+        "Essentials", R.string.more_group_essentials,
+        listOf(
+            Destination.Settings,
+            Destination.Devices,
+            Destination.DataSources,
+            Destination.Notifications,
+        ),
+        defaultExpanded = true,
+        pinned = true,
+    ),
+    DrawerGroup(
+        "Train", R.string.more_group_train,
+        listOf(
+            Destination.Live,
+            Destination.Workouts,
+            Destination.Intervals,
+        ),
+        defaultExpanded = true,
+    ),
+    DrawerGroup(
+        "Recovery", R.string.more_group_recovery,
+        listOf(
+            Destination.Stress,
+            Destination.Breathe,
+            Destination.SmartAlarm,
+            Destination.Automations,
+            Destination.Rhythm,
+        ),
+        defaultExpanded = true,
+    ),
+    DrawerGroup(
+        "Health", R.string.more_group_health,
+        listOf(
+            Destination.Health,
+            Destination.Hydration,
+            Destination.VitalSigns,
+            Destination.LabBook,
+        ),
+        defaultExpanded = true,
+    ),
+    DrawerGroup(
+        "Insights", R.string.more_group_insights,
+        listOf(
+            Destination.InsightsHub,
+            Destination.Intelligence,
+            Destination.Coach,
+            Destination.Insights,
+            Destination.Explore,
+            Destination.Compare,
+        ),
+        defaultExpanded = false,
+    ),
+    DrawerGroup(
+        "Data", R.string.more_group_data,
+        listOf(
+            Destination.BackupSync,
+            Destination.FusedRecord,
+            Destination.TestCentre,
+        ),
+        defaultExpanded = false,
+    ),
 )
 
-/** The headers open by default at first run, derived from [drawerGroups.defaultExpanded] (Insights +
- *  Body), so the seed lives in one place and the persistence default can't drift from the UI default. */
+/** The headers open by default at first run, derived from [drawerGroups.defaultExpanded]. */
 private fun defaultExpandedHeaders(): Set<String> =
     drawerGroups.filter { it.defaultExpanded }.map { it.header }.toSet()
 
@@ -248,7 +295,7 @@ private fun defaultExpandedHeaders(): Set<String> =
  * stored string is a valid state (everything collapsed), distinct from "never set" (which yields the seed).
  */
 internal object MoreSectionPrefs {
-    const val KEY = "noop.more.expandedSections"
+    const val KEY = "noop.more.expandedSections.v2"
 
     /** Read the expanded-header set; returns [default] when the key was never written (first run). */
     fun read(prefs: android.content.SharedPreferences, default: Set<String>): Set<String> {
@@ -589,54 +636,136 @@ fun AppRoot(viewModel: AppViewModel = viewModel()) {
 // row navigates top-level; there is no sheet to dismiss. The floating bottom bar stays visible because
 // this is just another NavHost destination under the same Scaffold.
 
-/** The full grouped destination list as a navigated page (the iOS More tab's twin). */
+/** The full grouped destination list as a navigated page. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MoreScreen(onNavigate: (String) -> Unit) {
-    // S2 parity: each group's open/closed state, seeded from `defaultExpanded` (Insights + Body open,
-    // Data + App collapsed). PERSISTED (#860 item 2): the user's open/closed choice must survive leaving
-    // and re-entering the More page (and relaunch), not reset to the seed every visit. Backed by
-    // [MoreSectionPrefs] (a CSV of expanded headers in SharedPreferences), mirroring the iOS
-    // @AppStorage("more.expandedSections"). Seeded ONCE from the stored value so first run still shows the
-    // Insights+Body default; every toggle writes through so the next visit reflects the saved state.
     val context = androidx.compose.ui.platform.LocalContext.current
     val expanded = remember {
         val stored = MoreSectionPrefs.read(NoopPrefs.of(context), defaultExpandedHeaders())
         androidx.compose.runtime.mutableStateMapOf<String, Boolean>().apply {
-            drawerGroups.forEach { put(it.header, stored.contains(it.header)) }
+            drawerGroups.forEach { put(it.header, it.pinned || stored.contains(it.header)) }
         }
     }
+    var query by remember { mutableStateOf("") }
+    val queryTrimmed = query.trim()
+    val searching = queryTrimmed.isNotEmpty()
+
     ScreenScaffold(
-        title = "More",
-        subtitle = "Everything else, one tap away",
+        title = stringResource(R.string.nav_more),
+        subtitle = stringResource(R.string.more_subtitle),
     ) {
-        // Mirror the iOS More page: each group is a tappable UPPERCASE overline header (with a disclosure
-        // chevron) over a single grouped white NoopCard whose rows are tight (accent icon + title +
-        // chevron) and separated by inset hairlines (NOT loose NavigationDrawerItems on the bare surface).
-        drawerGroups.forEach { group ->
-            val isOpen = expanded[group.header] ?: group.defaultExpanded
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                MoreGroupHeader(
-                    title = stringResource(group.headerRes),
-                    expanded = isOpen,
-                    onToggle = {
-                        expanded[group.header] = !isOpen
-                        // Persist the new open set so the choice survives leaving + re-entering the page
-                        // and relaunch (#860 item 2), mirroring the iOS @AppStorage write.
-                        val open = drawerGroups.map { it.header }.filter { expanded[it] == true }.toSet()
-                        MoreSectionPrefs.write(NoopPrefs.of(context), open)
-                    },
+        // Search — primary findability surface when the list is long.
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { contentDescription = "Search menu" },
+            singleLine = true,
+            textStyle = NoopType.body,
+            placeholder = {
+                Text(
+                    stringResource(R.string.more_search_hint),
+                    style = NoopType.body,
+                    color = Palette.textTertiary,
                 )
-                if (isOpen) {
-                    NoopCard(padding = 0.dp) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            group.items.forEachIndexed { i, dest ->
-                                MoreRow(dest = dest, onClick = { onNavigate(dest.route) })
-                                if (i < group.items.lastIndex) {
-                                    HorizontalDivider(
-                                        color = Palette.hairline,
-                                        modifier = Modifier.padding(start = 50.dp),
-                                    )
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Outlined.Search,
+                    contentDescription = null,
+                    tint = Palette.textTertiary,
+                    modifier = Modifier.size(20.dp),
+                )
+            },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { query = "" }) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Clear search",
+                            tint = Palette.textTertiary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Palette.textPrimary,
+                unfocusedTextColor = Palette.textPrimary,
+                focusedBorderColor = Palette.accent.copy(alpha = 0.55f),
+                unfocusedBorderColor = Palette.hairline,
+                cursorColor = Palette.accent,
+                focusedContainerColor = Palette.surfaceInset,
+                unfocusedContainerColor = Palette.surfaceInset,
+            ),
+            shape = RoundedCornerShape(14.dp),
+        )
+
+        if (searching) {
+            val localizedHits = drawerGroups.flatMap { it.items }.distinct().filter { dest ->
+                val title = stringResource(dest.titleRes)
+                title.contains(queryTrimmed, ignoreCase = true) ||
+                    dest.route.contains(queryTrimmed, ignoreCase = true) ||
+                    dest.name.contains(queryTrimmed, ignoreCase = true)
+            }
+            if (localizedHits.isEmpty()) {
+                Text(
+                    stringResource(R.string.more_search_empty),
+                    style = NoopType.subhead,
+                    color = Palette.textTertiary,
+                )
+            } else {
+                NoopCard(padding = 0.dp) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        localizedHits.forEachIndexed { i, dest ->
+                            MoreRow(dest = dest, onClick = { onNavigate(dest.route) })
+                            if (i < localizedHits.lastIndex) {
+                                HorizontalDivider(
+                                    color = Palette.hairline,
+                                    modifier = Modifier.padding(start = 50.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            drawerGroups.forEach { group ->
+                val isOpen = group.pinned || (expanded[group.header] ?: group.defaultExpanded)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (group.pinned) {
+                        Text(
+                            stringResource(group.headerRes),
+                            style = NoopType.overline,
+                            color = Palette.textTertiary,
+                        )
+                    } else {
+                        MoreGroupHeader(
+                            title = stringResource(group.headerRes),
+                            expanded = isOpen,
+                            onToggle = {
+                                expanded[group.header] = !isOpen
+                                val open = drawerGroups
+                                    .filter { it.pinned || expanded[it.header] == true }
+                                    .map { it.header }
+                                    .toSet()
+                                MoreSectionPrefs.write(NoopPrefs.of(context), open)
+                            },
+                        )
+                    }
+                    if (isOpen) {
+                        NoopCard(padding = 0.dp) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                group.items.forEachIndexed { i, dest ->
+                                    MoreRow(dest = dest, onClick = { onNavigate(dest.route) })
+                                    if (i < group.items.lastIndex) {
+                                        HorizontalDivider(
+                                            color = Palette.hairline,
+                                            modifier = Modifier.padding(start = 50.dp),
+                                        )
+                                    }
                                 }
                             }
                         }

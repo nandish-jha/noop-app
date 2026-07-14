@@ -751,7 +751,7 @@ fun BevelGauge(
  * "No Data" read with one consistent size + weight. Mirrors iOS `GlowRing.centerFont(diameter:)`.
  */
 fun glowRingCenterTextStyle(diameter: Dp, color: Color = Palette.textPrimary): TextStyle =
-    TextStyle(fontWeight = FontWeight.Bold, fontSize = (diameter.value * 0.36f).sp, color = color)
+    NoopType.number(diameter.value * 0.36f, weight = FontWeight.Bold).copy(color = color)
 
 @Composable
 fun GlowRing(
@@ -1044,7 +1044,7 @@ fun ScreenScaffold(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         if (title != null) {
-                            Text(title, style = NoopType.title1, color = Palette.textPrimary)
+                            Text(title, style = NoopType.pageTitle, color = Palette.textPrimary)
                         }
                         if (subtitle != null) {
                             Text(subtitle, style = NoopType.subhead, color = Palette.textSecondary)
@@ -1141,7 +1141,7 @@ fun LazyScreenScaffold(
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         if (title != null) {
-                            Text(title, style = NoopType.title1, color = Palette.textPrimary)
+                            Text(title, style = NoopType.pageTitle, color = Palette.textPrimary)
                         }
                         if (subtitle != null) {
                             Text(subtitle, style = NoopType.subhead, color = Palette.textSecondary)

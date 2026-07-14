@@ -1871,7 +1871,6 @@ private fun LiquidTodayHeader(
                 Text(
                     dayTitle,
                     style = NoopType.pageTitle.copy(
-                        lineHeight = 32.sp,
                         platformStyle = PlatformTextStyle(includeFontPadding = false),
                     ),
                     color = Palette.textPrimary,
@@ -1880,8 +1879,7 @@ private fun LiquidTodayHeader(
                 )
                 Text(
                     humanDate,
-                    style = NoopType.caption.copy(
-                        lineHeight = 17.sp,
+                    style = NoopType.subhead.copy(
                         platformStyle = PlatformTextStyle(includeFontPadding = false),
                     ),
                     color = Palette.textSecondary,
